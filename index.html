@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DropLink — P2P File Transfer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;400;600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #08080f;
+            --card: rgba(255,255,255,0.03);
+            --card-hover: rgba(255,255,255,0.06);
+            --border: rgba(255,255,255,0.07);
+            --border-hover: rgba(255,255,255,0.14);
+            --text: #e8e8ec;
+            --text-dim: #6b6b78;
+            --accent: #e8a030;
+            --accent-hover: #f0b848;
+            --accent-glow: rgba(232,160,48,0.12);
+            --success: #34d399;
+            --error: #f87171;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        #bgCanvas {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+        }
+        .bg-radial {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background: radial-gradient(ellipse at 50% 40%, rgba(232,160,48,0.04) 0%, transparent 60%);
+        }
+        #app {
+            position: relative; z-index: 1;
+            min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+        }
+        header {
+            width: 100%; padding: 1.5rem 2rem;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .logo {
+            font-weight: 900; font-size: 1.4rem; letter-spacing: -0.03em;
+            color: var(--accent);
+        }
+        .logo span { color: var(--text); font-weight: 400; }
+        .back-btn {
+            background: none; border: 1px solid var(--border); color: var(--text-dim);
+            padding: 0.4rem 1rem; border-radius: 8px; cursor: pointer;
+            font-family: inherit; font-size: 0.85rem; transition: all 0.2s;
+            display: none;
+        }
+        .back-btn:hover { border-color: var(--border-hover); color: var(--text); }
+        .back-btn.visible { display: inline-flex; align-items: center; gap: 0.4rem; }
+
+        .screen {
+            display: none; flex-direction: column; align-items: center;
+            width: 100%; max-width: 680px; padding: 0 1.5rem 3rem;
+            animation: fadeUp 0.4s ease;
+        }
+        .screen.active { display: flex; }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Home */
+        .hero { text-align: center; margin-top: 12vh; margin-bottom: 3rem; }
+        .hero h1 {
+            font-size: clamp(2.2rem, 5vw, 3.4rem); font-weight: 900;
+            letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 1rem;
+        }
+        .hero h1 em { font-style: normal; color: var(--accent); }
+        .hero p { color: var(--text-dim); font-size: 1.1rem; font-weight: 200; max-width: 420px; margin: 0 auto; }
+        .home-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; width: 100%; }
+        .home-card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 2.5rem 1.5rem; text-align: center;
+            cursor: pointer; transition: all 0.3s ease; position: relative; overflow: hidden;
+        }
+        .home-card::before {
+            content: ''; position: absolute; inset: 0;
+            background: radial-gradient(circle at 50% 0%, var(--accent-glow), transparent 70%);
+            opacity: 0; transition: opacity 0.4s;
+        }
+        .home-card:hover { border-color: var(--accent); transform: translateY(-4px); }
+        .home-card:hover::before { opacity: 1; }
+        .home-card i {
+            font-size: 2.2rem; color: var(--accent); margin-bottom: 1rem;
+            position: relative; z-index: 1;
+        }
+        .home-card h2 { font-size: 1.2rem; font-weight: 600; margin-bottom: 0.5rem; position: relative; z-index: 1; }
+        .home-card p { color: var(--text-dim); font-size: 0.88rem; position: relative; z-index: 1; }
+        .home-note {
+            margin-top: 3rem; color: var(--text-dim); font-size: 0.78rem; text-align: center;
+            opacity: 0.6;
+        }
+
+        /* Dropzone */
+        .section-title {
+            font-size: 1.5rem; font-weight: 800; margin-top: 8vh; margin-bottom: 1.5rem;
+            letter-spacing: -0.02em;
+        }
+        .dropzone {
+            width: 100%; border: 2px dashed var(--border); border-radius: 16px;
+            padding: 3rem 2rem; text-align: center; cursor: pointer;
+            transition: all 0.3s; position: relative; background: var(--card);
+        }
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--accent); background: var(--accent-glow);
+        }
+        .dropzone i { font-size: 2.5rem; color: var(--accent); margin-bottom: 1rem; }
+        .dropzone p { color: var(--text-dim); font-size: 0.95rem; }
+        .dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+        /* File list */
+        .file-list { width: 100%; margin-top: 1.2rem; display: flex; flex-direction: column; gap: 0.5rem; }
+        .file-item {
+            display: flex; align-items: center; gap: 0.8rem;
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 10px; padding: 0.7rem 1rem; font-size: 0.88rem;
+        }
+        .file-item i { color: var(--accent); width: 20px; text-align: center; }
+        .file-item .fname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-item .fsize { color: var(--text-dim); white-space: nowrap; }
+        .file-item .fremove {
+            background: none; border: none; color: var(--text-dim); cursor: pointer;
+            padding: 0.2rem 0.4rem; border-radius: 4px; transition: color 0.2s;
+        }
+        .file-item .fremove:hover { color: var(--error); }
+
+        /* Buttons */
+        .btn-primary {
+            margin-top: 1.5rem; width: 100%; padding: 0.9rem 1.5rem;
+            background: var(--accent); color: #000; border: none; border-radius: 12px;
+            font-family: inherit; font-size: 1rem; font-weight: 600;
+            cursor: pointer; transition: all 0.25s;
+        }
+        .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+        .btn-secondary {
+            margin-top: 0.8rem; width: 100%; padding: 0.8rem 1.5rem;
+            background: var(--card); color: var(--text); border: 1px solid var(--border);
+            border-radius: 12px; font-family: inherit; font-size: 0.95rem; font-weight: 400;
+            cursor: pointer; transition: all 0.25s;
+        }
+        .btn-secondary:hover { border-color: var(--border-hover); background: var(--card-hover); }
+
+        /* Code display */
+        .code-box {
+            margin-top: 2rem; text-align: center;
+        }
+        .code-label { display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.8rem; }
+        .code-display {
+            display: inline-flex; align-items: center; gap: 0.8rem;
+            background: rgba(232,160,48,0.08); border: 1px solid rgba(232,160,48,0.2);
+            border-radius: 14px; padding: 0.8rem 1.5rem;
+        }
+        .code-chars {
+            font-family: 'Courier New', monospace; font-size: 2.8rem; font-weight: 700;
+            letter-spacing: 0.45em; color: var(--accent); text-indent: 0.45em;
+        }
+        .copy-btn {
+            background: rgba(232,160,48,0.15); border: none; color: var(--accent);
+            width: 42px; height: 42px; border-radius: 10px; cursor: pointer;
+            font-size: 1.1rem; transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+        }
+        .copy-btn:hover { background: rgba(232,160,48,0.25); }
+        .waiting-msg {
+            margin-top: 2rem; color: var(--text-dim); font-size: 0.95rem;
+            display: flex; align-items: center; gap: 0.6rem;
+        }
+        .dot-pulse { display: inline-flex; gap: 4px; }
+        .dot-pulse span {
+            width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+            animation: dotPulse 1.4s infinite ease-in-out;
+        }
+        .dot-pulse span:nth-child(2) { animation-delay: 0.2s; }
+        .dot-pulse span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes dotPulse {
+            0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+            40% { opacity: 1; transform: scale(1.1); }
+        }
+
+        /* Code input (receiver) */
+        .code-input-wrap { margin-top: 1.5rem; text-align: center; }
+        .code-input {
+            font-family: 'Courier New', monospace; font-size: 2.8rem; font-weight: 700;
+            letter-spacing: 0.5em; text-indent: 0.5em; text-align: center;
+            text-transform: uppercase; width: 100%; max-width: 380px;
+            background: var(--card); border: 2px solid var(--border); border-radius: 14px;
+            padding: 0.8rem 1rem; color: var(--accent);
+            font-family: 'Courier New', monospace; outline: none; transition: border-color 0.3s;
+        }
+        .code-input:focus { border-color: var(--accent); }
+        .code-input::placeholder { color: rgba(232,160,48,0.2); }
+
+        /* Progress */
+        .transfer-list { width: 100%; margin-top: 1rem; display: flex; flex-direction: column; gap: 0.8rem; }
+        .transfer-item {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 0.9rem 1.1rem;
+        }
+        .transfer-item.active { border-color: rgba(232,160,48,0.3); }
+        .transfer-item.done { border-color: rgba(52,211,153,0.3); }
+        .ti-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem; }
+        .ti-header i { color: var(--accent); width: 18px; text-align: center; font-size: 0.9rem; }
+        .ti-header .ti-name { flex: 1; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ti-header .ti-size { color: var(--text-dim); font-size: 0.8rem; white-space: nowrap; }
+        .ti-header .ti-pct { color: var(--accent); font-size: 0.8rem; font-weight: 600; min-width: 40px; text-align: right; }
+        .ti-bar { height: 4px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+        .ti-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.15s linear; width: 0%; }
+        .transfer-item.done .ti-fill { background: var(--success); }
+        .transfer-item.done .ti-pct { color: var(--success); }
+
+        .overall-bar {
+            margin-top: 1.5rem; width: 100%;
+            background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.2rem;
+        }
+        .overall-bar .ob-label { display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--text-dim); margin-bottom: 0.5rem; }
+        .overall-bar .ob-bar { height: 6px; background: rgba(255,255,255,0.06); border-radius: 6px; overflow: hidden; }
+        .overall-bar .ob-fill { height: 100%; background: var(--accent); border-radius: 6px; transition: width 0.15s linear; width: 0%; }
+        .overall-bar .ob-stats {
+            display: flex; justify-content: space-between; margin-top: 0.6rem;
+            font-size: 0.82rem; color: var(--text-dim);
+        }
+        .overall-bar .ob-stats strong { color: var(--text); font-weight: 600; }
+
+        /* Success */
+        .success-icon { font-size: 4rem; color: var(--success); margin-bottom: 1.5rem; }
+        .success-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem; }
+        .success-sub { color: var(--text-dim); margin-bottom: 2rem; }
+
+        .received-list { width: 100%; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.4rem; }
+        .received-item {
+            display: flex; align-items: center; gap: 0.7rem;
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 10px; padding: 0.6rem 1rem; font-size: 0.88rem;
+        }
+        .received-item i { color: var(--success); }
+        .received-item .ri-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .received-item .ri-size { color: var(--text-dim); font-size: 0.8rem; }
+        .received-item .ri-dl {
+            background: none; border: none; color: var(--accent); cursor: pointer;
+            font-size: 0.85rem; padding: 0.2rem 0.5rem; border-radius: 6px; transition: background 0.2s;
+        }
+        .received-item .ri-dl:hover { background: var(--accent-glow); }
+
+        /* Spinner */
+        .spinner-wrap { margin-top: 3rem; text-align: center; }
+        .spinner {
+            width: 48px; height: 48px; border: 3px solid var(--border);
+            border-top-color: var(--accent); border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin: 0 auto 1.2rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner-wrap p { color: var(--text-dim); }
+
+        /* Toasts */
+        #toasts {
+            position: fixed; top: 1.5rem; right: 1.5rem; z-index: 9999;
+            display: flex; flex-direction: column; gap: 0.5rem;
+        }
+        .toast {
+            background: #1a1a24; border: 1px solid var(--border); border-radius: 10px;
+            padding: 0.7rem 1.2rem; font-size: 0.88rem; color: var(--text);
+            animation: toastIn 0.3s ease; min-width: 220px; max-width: 380px;
+            display: flex; align-items: center; gap: 0.6rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .toast.error { border-color: rgba(248,113,113,0.3); }
+        .toast.error i { color: var(--error); }
+        .toast.success { border-color: rgba(52,211,153,0.3); }
+        .toast.success i { color: var(--success); }
+        .toast.info i { color: var(--accent); }
+        .toast.out { animation: toastOut 0.3s ease forwards; }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes toastOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(40px); } }
+
+        @media (max-width: 560px) {
+            .home-cards { grid-template-columns: 1fr; }
+            .hero { margin-top: 6vh; }
+            .code-chars, .code-input { font-size: 2rem; letter-spacing: 0.35em; text-indent: 0.35em; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="bgCanvas"></canvas>
+    <div class="bg-radial"></div>
+
+    <div id="app">
+        <header>
+            <div class="logo">Drop<span>Link</span></div>
+            <button class="back-btn" id="backBtn" onclick="goHome()" aria-label="Go back to home">
+                <i class="fas fa-arrow-left"></i> Back
+            </button>
+        </header>
+
+        <!-- HOME -->
+        <section id="homeScreen" class="screen active">
+            <div class="hero">
+                <h1>Send files,<br><em>peer to peer</em></h1>
+                <p>No servers, no size limits, no sign-up. Direct browser-to-browser transfer powered by WebRTC.</p>
+            </div>
+            <div class="home-cards">
+                <div class="home-card" onclick="startSend()" tabindex="0" role="button" aria-label="Send files">
+                    <i class="fas fa-arrow-up-from-bracket"></i>
+                    <h2>Send Files</h2>
+                    <p>Pick files and share a short code</p>
+                </div>
+                <div class="home-card" onclick="startReceive()" tabindex="0" role="button" aria-label="Receive files">
+                    <i class="fas fa-arrow-down-to-bracket"></i>
+                    <h2>Receive Files</h2>
+                    <p>Enter a code to download files</p>
+                </div>
+            </div>
+            <p class="home-note"><i class="fas fa-shield-halved"></i> &nbsp;Files never touch any server. Transfer happens directly between your devices.</p>
+        </section>
+
+        <!-- SENDER -->
+        <section id="senderScreen" class="screen">
+            <div id="sStep1">
+                <h2 class="section-title">Select files to send</h2>
+                <div class="dropzone" id="dropzone">
+                    <i class="fas fa-cloud-arrow-up"></i>
+                    <p>Drop files here or click to browse</p>
+                    <input type="file" id="fileInput" multiple aria-label="Select files">
+                </div>
+                <div class="file-list" id="senderFileList"></div>
+                <button class="btn-primary" id="createLinkBtn" disabled onclick="createLink()">Create Link</button>
+            </div>
+            <div id="sStep2" style="display:none">
+                <h2 class="section-title">Share this code</h2>
+                <div class="code-box">
+                    <span class="code-label">The receiver needs this code</span>
+                    <div class="code-display">
+                        <span class="code-chars" id="senderCode">------</span>
+                        <button class="copy-btn" onclick="copyCode()" aria-label="Copy code"><i class="fas fa-copy"></i></button>
+                    </div>
+                </div>
+                <div class="waiting-msg">
+                    Waiting for receiver <span class="dot-pulse"><span></span><span></span><span></span></span>
+                </div>
+            </div>
+            <div id="sStep3" style="display:none">
+                <h2 class="section-title">Sending files</h2>
+                <div class="transfer-list" id="sendTransferList"></div>
+                <div class="overall-bar">
+                    <div class="ob-label"><span>Overall</span><span id="sendObPct">0%</span></div>
+                    <div class="ob-bar"><div class="ob-fill" id="sendObFill"></div></div>
+                    <div class="ob-stats">
+                        <span><strong id="sendSpeed">0 B/s</strong></span>
+                        <span id="sendEta">calculating...</span>
+                    </div>
+                </div>
+            </div>
+            <div id="sStep4" style="display:none; text-align:center;">
+                <i class="fas fa-circle-check success-icon"></i>
+                <h2 class="success-title">Files sent successfully</h2>
+                <p class="success-sub" id="sendDoneInfo"></p>
+                <button class="btn-primary" onclick="goHome()" style="max-width:280px;margin:0 auto;">Send More Files</button>
+            </div>
+        </section>
+
+        <!-- RECEIVER -->
+        <section id="receiverScreen" class="screen">
+            <div id="rStep1">
+                <h2 class="section-title">Enter the sender's code</h2>
+                <div class="code-input-wrap">
+                    <input type="text" class="code-input" id="codeInput" maxlength="6"
+                           placeholder="ABC123" autocomplete="off" autocorrect="off"
+                           autocapitalize="characters" spellcheck="false" aria-label="Enter 6-character code">
+                </div>
+                <button class="btn-primary" id="connectBtn" onclick="connectToSender()" style="max-width:380px;margin:1.5rem auto 0;">Connect</button>
+            </div>
+            <div id="rStep2" style="display:none">
+                <div class="spinner-wrap">
+                    <div class="spinner"></div>
+                    <p>Connecting to sender...</p>
+                </div>
+            </div>
+            <div id="rStep3" style="display:none">
+                <h2 class="section-title">Receiving files</h2>
+                <div class="transfer-list" id="receiveTransferList"></div>
+                <div class="overall-bar">
+                    <div class="ob-label"><span>Overall</span><span id="recvObPct">0%</span></div>
+                    <div class="ob-bar"><div class="ob-fill" id="recvObFill"></div></div>
+                    <div class="ob-stats">
+                        <span><strong id="recvSpeed">0 B/s</strong></span>
+                        <span id="recvEta">calculating...</span>
+                    </div>
+                </div>
+            </div>
+            <div id="rStep4" style="display:none; text-align:center;">
+                <i class="fas fa-circle-check success-icon"></i>
+                <h2 class="success-title">Files received</h2>
+                <p class="success-sub" id="recvDoneInfo"></p>
+                <div class="received-list" id="receivedFileList"></div>
+                <button class="btn-primary" id="dlAllBtn" onclick="downloadAllZip()" style="max-width:380px;margin:0 auto;">Download All as ZIP</button>
+                <button class="btn-secondary" onclick="goHome()" style="max-width:380px;margin:0 auto;">Receive More Files</button>
+            </div>
+        </section>
+    </div>
+
+    <div id="toasts"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+    /* ===== Check PeerJS ===== */
+    if (typeof Peer === 'undefined') {
+        document.getElementById('app').innerHTML = '<div style="text-align:center;padding:4rem 2rem;color:var(--error);"><i class="fas fa-triangle-exclamation" style="font-size:3rem;margin-bottom:1rem;display:block;"></i><h2 style="margin-bottom:0.5rem;">Failed to load PeerJS</h2><p style="color:var(--text-dim);">Please check your internet connection and refresh the page.</p></div>';
+        throw new Error('PeerJS not loaded');
+    }
+
+    /* ===== STATE ===== */
+    const CHUNK_SIZE = 16384; // 16KB safe for all browsers
+    let peer = null;
+    let conn = null;
+    let selectedFiles = [];
+    let senderCode = '';
+    let receivedFiles = []; // { name, size, blob, chunks: [] }
+    let transfer = { active: false, totalBytes: 0, doneBytes: 0, fileStates: [], startTime: 0, lastBytes: 0, lastTime: 0, speed: 0, interval: null };
+
+    /* ===== SCREEN MANAGEMENT ===== */
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        const isHome = id === 'homeScreen';
+        document.getElementById('backBtn').classList.toggle('visible', !isHome);
+    }
+    function showSenderStep(n) {
+        for (let i = 1; i <= 4; i++) document.getElementById('sStep' + i).style.display = i === n ? '' : 'none';
+    }
+    function showReceiverStep(n) {
+        for (let i = 1; i <= 4; i++) document.getElementById('rStep' + i).style.display = i === n ? '' : 'none';
+    }
+    function goHome() {
+        cleanup();
+        selectedFiles = [];
+        receivedFiles = [];
+        document.getElementById('senderFileList').innerHTML = '';
+        document.getElementById('fileInput').value = '';
+        document.getElementById('createLinkBtn').disabled = true;
+        document.getElementById('codeInput').value = '';
+        showSenderStep(1);
+        showReceiverStep(1);
+        showScreen('homeScreen');
+    }
+    function cleanup() {
+        if (transfer.interval) { clearInterval(transfer.interval); transfer.interval = null; }
+        transfer.active = false;
+        if (conn) { try { conn.close(); } catch(e){} conn = null; }
+        if (peer) { try { peer.destroy(); } catch(e){} peer = null; }
+    }
+
+    /* ===== NAVIGATION ===== */
+    function startSend() { showScreen('senderScreen'); showSenderStep(1); }
+    function startReceive() { showScreen('receiverScreen'); showReceiverStep(1); setTimeout(() => document.getElementById('codeInput').focus(), 100); }
+
+    /* ===== FILE SELECTION ===== */
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('dragover'); addFiles(e.dataTransfer.files); });
+    fileInput.addEventListener('change', () => { addFiles(fileInput.files); fileInput.value = ''; });
+
+    function addFiles(fileList) {
+        for (const f of fileList) selectedFiles.push(f);
+        renderFileList();
+    }
+    function removeFile(idx) {
+        selectedFiles.splice(idx, 1);
+        renderFileList();
+    }
+    function renderFileList() {
+        const el = document.getElementById('senderFileList');
+        el.innerHTML = selectedFiles.map((f, i) =>
+            `<div class="file-item">
+                <i class="fas ${getFileIcon(f.name)}"></i>
+                <span class="fname" title="${f.name}">${f.name}</span>
+                <span class="fsize">${formatSize(f.size)}</span>
+                <button class="fremove" onclick="removeFile(${i})" aria-label="Remove file"><i class="fas fa-xmark"></i></button>
+            </div>`
+        ).join('');
+        document.getElementById('createLinkBtn').disabled = selectedFiles.length === 0;
+    }
+
+    /* ===== CREATE LINK (SENDER) ===== */
+    async function createLink() {
+        const btn = document.getElementById('createLinkBtn');
+        btn.disabled = true;
+        btn.textContent = 'Creating link...';
+        try {
+            senderCode = genCode();
+            peer = new Peer('dl-' + senderCode, { debug: 0 });
+            await new Promise((res, rej) => { peer.on('open', res); peer.on('error', rej); });
+            document.getElementById('senderCode').textContent = senderCode;
+            showSenderStep(2);
+            peer.on('connection', onSenderConnection);
+            peer.on('error', err => {
+                if (err.type === 'unavailable-id') { showToast('Code collision, regenerating...', 'info'); createLink(); }
+                else showToast('Connection error: ' + err.message, 'error');
+            });
+        } catch (e) {
+            showToast('Failed to create link. Check your connection.', 'error');
+            btn.disabled = false;
+            btn.textContent = 'Create Link';
+        }
+    }
+
+    function onSenderConnection(c) {
+        conn = c;
+        conn.on('open', () => {
+            showToast('Receiver connected!', 'success');
+            startSending();
+        });
+        conn.on('close', () => { if (transfer.active) showToast('Receiver disconnected', 'error'); });
+        conn.on('error', err => showToast('Transfer error: ' + err.message, 'error'));
+    }
+
+    /* ===== SENDER: TRANSFER ===== */
+    async function startSending() {
+        showSenderStep(3);
+        const totalBytes = selectedFiles.reduce((s, f) => s + f.size, 0);
+        transfer = {
+            active: true, totalBytes, doneBytes: 0,
+            fileStates: selectedFiles.map(f => ({
+                name: f.name, size: f.size, done: 0,
+                totalChunks: Math.ceil(f.size / CHUNK_SIZE)
+            })),
+            startTime: Date.now(), lastBytes: 0, lastTime: Date.now(), speed: 0, interval: null
+        };
+        renderSendProgress();
+        startSpeedTracker('send');
+        // Send file list first
+        conn.send({ type: 'file-list', files: selectedFiles.map(f => ({ name: f.name, size: f.size })) });
+        await sleep(200); // Let receiver render the list
+        // Send each file
+        for (let fi = 0; fi < selectedFiles.length; fi++) {
+            if (!conn || !conn.open) break;
+            await sendOneFile(fi, selectedFiles[fi]);
+        }
+        if (conn && conn.open) conn.send({ type: 'all-done' });
+        finishTransfer('send');
+    }
+
+    async function sendOneFile(index, file) {
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        conn.send({ type: 'file-start', index, name: file.name, size: file.size, totalChunks });
+        for (let ci = 0; ci < totalChunks; ci++) {
+            if (!conn || !conn.open) return;
+            const start = ci * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, file.size);
+            const buf = await file.slice(start, end).arrayBuffer();
+            conn.send({ type: 'chunk', index, chunkIndex: ci, data: new Uint8Array(buf) });
+            const chunkDone = Math.min(end, file.size);
+            transfer.fileStates[index].done = chunkDone;
+            transfer.doneBytes = transfer.fileStates.reduce((s, fs) => s + fs.done, 0);
+            // Yield every 50 chunks to keep UI responsive
+            if (ci % 50 === 0) {
+                renderSendProgress();
+                await sleep(0);
+            }
+        }
+        conn.send({ type: 'file-end', index });
+        transfer.fileStates[index].done = file.size;
+        transfer.doneBytes = transfer.fileStates.reduce((s, fs) => s + fs.done, 0);
+        renderSendProgress();
+    }
+
+    function renderSendProgress() {
+        const list = document.getElementById('sendTransferList');
+        list.innerHTML = transfer.fileStates.map((fs, i) => {
+            const pct = fs.size > 0 ? Math.round((fs.done / fs.size) * 100) : 0;
+            const cls = pct >= 100 ? 'done' : (fs.done > 0 ? 'active' : '');
+            return `<div class="transfer-item ${cls}">
+                <div class="ti-header">
+                    <i class="fas ${getFileIcon(fs.name)}"></i>
+                    <span class="ti-name" title="${fs.name}">${fs.name}</span>
+                    <span class="ti-size">${formatSize(fs.size)}</span>
+                    <span class="ti-pct">${pct}%</span>
+                </div>
+                <div class="ti-bar"><div class="ti-fill" style="width:${pct}%"></div></div>
+            </div>`;
+        }).join('');
+        const overallPct = transfer.totalBytes > 0 ? Math.round((transfer.doneBytes / transfer.totalBytes) * 100) : 0;
+        document.getElementById('sendObPct').textContent = overallPct + '%';
+        document.getElementById('sendObFill').style.width = overallPct + '%';
+    }
+
+    /* ===== RECEIVER: CONNECT ===== */
+    function connectToSender() {
+        const raw = document.getElementById('codeInput').value.trim().toUpperCase();
+        if (raw.length !== 6 || !/^[A-Z0-9]{6}$/.test(raw)) {
+            showToast('Please enter a valid 6-character code', 'error');
+            return;
+        }
+        showReceiverStep(2);
+        peer = new Peer(undefined, { debug: 0 });
+        peer.on('open', () => {
+            conn = peer.connect('dl-' + raw, { reliable: true });
+            conn.on('open', () => {
+                showToast('Connected to sender!', 'success');
+                setupReceiverHandlers();
+            });
+            conn.on('close', () => { if (transfer.active) showToast('Sender disconnected', 'error'); });
+            conn.on('error', err => showToast('Connection error: ' + err.message, 'error'));
+            // Timeout if no connection after 15s
+            setTimeout(() => {
+                if (conn && !conn.open) {
+                    showToast('Could not connect. Check the code and try again.', 'error');
+                    showReceiverStep(1);
+                    cleanup();
+                }
+            }, 15000);
+        });
+        peer.on('error', err => {
+            if (err.type === 'peer-unavailable') {
+                showToast('Code not found. Make sure the sender has created the link.', 'error');
+                showReceiverStep(1);
+                cleanup();
+            } else {
+                showToast('Connection error: ' + err.message, 'error');
+                showReceiverStep(1);
+                cleanup();
+            }
+        });
+    }
+
+    /* ===== RECEIVER: HANDLERS ===== */
+    function setupReceiverHandlers() {
+        let currentFileIdx = -1;
+        conn.on('data', async (data) => {
+            if (data.type === 'file-list') {
+                transfer.totalBytes = data.files.reduce((s, f) => s + f.size, 0);
+                transfer.fileStates = data.files.map(f => ({
+                    name: f.name, size: f.size, done: 0,
+                    totalChunks: Math.ceil(f.size / CHUNK_SIZE),
+                    chunks: []
+                }));
+                transfer.active = true;
+                transfer.startTime = Date.now();
+                transfer.lastBytes = 0;
+                transfer.lastTime = Date.now();
+                receivedFiles = data.files.map(f => ({ name: f.name, size: f.size, blob: null }));
+                showReceiverStep(3);
+                renderReceiveProgress();
+                startSpeedTracker('recv');
+            } else if (data.type === 'file-start') {
+                currentFileIdx = data.index;
+            } else if (data.type === 'chunk') {
+                const fs = transfer.fileStates[data.index];
+                if (fs) {
+                    fs.chunks[data.chunkIndex] = data.data;
+                    fs.done = Math.min((data.chunkIndex + 1) * CHUNK_SIZE, fs.size);
+                    transfer.doneBytes = transfer.fileStates.reduce((s, f) => s + f.done, 0);
+                    // Render every 100 chunks for performance
+                    if (data.chunkIndex % 100 === 0 || data.chunkIndex === fs.totalChunks - 1) {
+                        renderReceiveProgress();
+                        await sleep(0);
+                    }
+                }
+            } else if (data.type === 'file-end') {
+                const fs = transfer.fileStates[data.index];
+                if (fs) {
+                    fs.done = fs.size;
+                    // Assemble blob
+                    const blob = new Blob(fs.chunks);
+                    receivedFiles[data.index].blob = blob;
+                    fs.chunks = []; // Free memory
+                    transfer.doneBytes = transfer.fileStates.reduce((s, f) => s + f.done, 0);
+                    renderReceiveProgress();
+                }
+            } else if (data.type === 'all-done') {
+                finishTransfer('recv');
+            }
+        });
+    }
+
+    function renderReceiveProgress() {
+        const list = document.getElementById('receiveTransferList');
+        list.innerHTML = transfer.fileStates.map((fs, i) => {
+            const pct = fs.size > 0 ? Math.round((fs.done / fs.size) * 100) : 0;
+            const cls = pct >= 100 ? 'done' : (fs.done > 0 ? 'active' : '');
+            return `<div class="transfer-item ${cls}">
+                <div class="ti-header">
+                    <i class="fas ${getFileIcon(fs.name)}"></i>
+                    <span class="ti-name" title="${fs.name}">${fs.name}</span>
+                    <span class="ti-size">${formatSize(fs.size)}</span>
+                    <span class="ti-pct">${pct}%</span>
+                </div>
+                <div class="ti-bar"><div class="ti-fill" style="width:${pct}%"></div></div>
+            </div>`;
+        }).join('');
+        const overallPct = transfer.totalBytes > 0 ? Math.round((transfer.doneBytes / transfer.totalBytes) * 100) : 0;
+        document.getElementById('recvObPct').textContent = overallPct + '%';
+        document.getElementById('recvObFill').style.width = overallPct + '%';
+    }
+
+    /* ===== SPEED TRACKER ===== */
+    function startSpeedTracker(side) {
+        transfer.lastBytes = 0;
+        transfer.lastTime = Date.now();
+        transfer.speed = 0;
+        if (transfer.interval) clearInterval(transfer.interval);
+        transfer.interval = setInterval(() => {
+            const now = Date.now();
+            const elapsed = (now - transfer.lastTime) / 1000;
+            if (elapsed >= 0.5) {
+                const delta = transfer.doneBytes - transfer.lastBytes;
+                transfer.speed = delta / elapsed;
+                transfer.lastBytes = transfer.doneBytes;
+                transfer.lastTime = now;
+            }
+            const remaining = transfer.totalBytes - transfer.doneBytes;
+            const eta = transfer.speed > 0 ? remaining / transfer.speed : Infinity;
+            if (side === 'send') {
+                document.getElementById('sendSpeed').textContent = formatSpeed(transfer.speed);
+                document.getElementById('sendEta').textContent = transfer.doneBytes >= transfer.totalBytes ? 'Complete' : ('~ ' + formatTime(eta));
+            } else {
+                document.getElementById('recvSpeed').textContent = formatSpeed(transfer.speed);
+                document.getElementById('recvEta').textContent = transfer.doneBytes >= transfer.totalBytes ? 'Complete' : ('~ ' + formatTime(eta));
+            }
+        }, 500);
+    }
+
+    function finishTransfer(side) {
+        transfer.active = false;
+        if (transfer.interval) { clearInterval(transfer.interval); transfer.interval = null; }
+        // Final speed update
+        const elapsed = (Date.now() - transfer.startTime) / 1000;
+        const avgSpeed = elapsed > 0 ? transfer.totalBytes / elapsed : 0;
+        if (side === 'send') {
+            document.getElementById('sendDoneInfo').textContent =
+                `${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''} (${formatSize(transfer.totalBytes)}) sent in ${formatTime(elapsed)} — avg ${formatSpeed(avgSpeed)}`;
+            showSenderStep(4);
+        } else {
+            document.getElementById('recvDoneInfo').textContent =
+                `${receivedFiles.length} file${receivedFiles.length > 1 ? 's' : ''} (${formatSize(transfer.totalBytes)}) received in ${formatTime(elapsed)}`;
+            renderReceivedFiles();
+            showReceiverStep(4);
+            // Hide ZIP button if JSZip not available or single small file
+            if (typeof JSZip === 'undefined') {
+                document.getElementById('dlAllBtn').style.display = 'none';
+            }
+        }
+    }
+
+    /* ===== RECEIVED FILES DOWNLOAD ===== */
+    function renderReceivedFiles() {
+        const el = document.getElementById('receivedFileList');
+        el.innerHTML = receivedFiles.map((f, i) =>
+            `<div class="received-item">
+                <i class="fas ${getFileIcon(f.name)}"></i>
+                <span class="ri-name" title="${f.name}">${f.name}</span>
+                <span class="ri-size">${formatSize(f.size)}</span>
+                <button class="ri-dl" onclick="downloadOne(${i})" aria-label="Download ${f.name}"><i class="fas fa-download"></i></button>
+            </div>`
+        ).join('');
+    }
+    function downloadOne(idx) {
+        const f = receivedFiles[idx];
+        if (!f || !f.blob) return;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(f.blob);
+        a.download = f.name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    }
+    async function downloadAllZip() {
+        if (typeof JSZip === 'undefined') { showToast('ZIP library not loaded', 'error'); return; }
+        const btn = document.getElementById('dlAllBtn');
+        btn.disabled = true;
+        btn.textContent = 'Creating ZIP...';
+        try {
+            const zip = new JSZip();
+            const nameCount = {};
+            for (const f of receivedFiles) {
+                let name = f.name;
+                if (nameCount[name] !== undefined) { nameCount[name]++; name = name.replace(/(\.[^.]+)$/, ` (${nameCount[name]})$1`); }
+                else nameCount[name] = 0;
+                zip.file(name, f.blob);
+            }
+            const blob = await zip.generateAsync({ type: 'blob' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'droplink-files.zip';
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+        } catch(e) {
+            showToast('Failed to create ZIP', 'error');
+        }
+        btn.disabled = false;
+        btn.textContent = 'Download All as ZIP';
+    }
+
+    /* ===== CODE INPUT FORMATTING ===== */
+    document.getElementById('codeInput').addEventListener('input', function() {
+        this.value = this.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6);
+    });
+    document.getElementById('codeInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') connectToSender();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') goHome();
+    });
+    // Home cards keyboard support
+    document.querySelectorAll('.home-card').forEach(card => {
+        card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); } });
+    });
+
+    /* ===== COPY CODE ===== */
+    function copyCode() {
+        navigator.clipboard.writeText(senderCode).then(() => {
+            showToast('Code copied to clipboard!', 'success');
+        }).catch(() => {
+            // Fallback
+            const ta = document.createElement('textarea');
+            ta.value = senderCode;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showToast('Code copied!', 'success');
+        });
+    }
+
+    /* ===== HELPERS ===== */
+    function genCode() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No ambiguous chars (0/O, 1/I)
+        let code = '';
+        for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+        return code;
+    }
+    function formatSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + ' ' + u[i];
+    }
+    function formatSpeed(bps) {
+        if (bps <= 0) return '0 B/s';
+        const u = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+        const i = Math.floor(Math.log(bps) / Math.log(1024));
+        return (bps / Math.pow(1024, i)).toFixed(1) + ' ' + u[i];
+    }
+    function formatTime(sec) {
+        if (!isFinite(sec) || sec < 0) return '--';
+        if (sec < 60) return Math.ceil(sec) + 's';
+        const m = Math.floor(sec / 60);
+        const s = Math.ceil(sec % 60);
+        return m + 'm ' + s + 's';
+    }
+    function getFileIcon(name) {
+        const ext = name.split('.').pop().toLowerCase();
+        const map = {
+            pdf:'fa-file-pdf', doc:'fa-file-word', docx:'fa-file-word',
+            xls:'fa-file-excel', xlsx:'fa-file-excel', csv:'fa-file-csv',
+            ppt:'fa-file-powerpoint', pptx:'fa-file-powerpoint',
+            jpg:'fa-file-image', jpeg:'fa-file-image', png:'fa-file-image',
+            gif:'fa-file-image', svg:'fa-file-image', webp:'fa-file-image',
+            bmp:'fa-file-image', ico:'fa-file-image',
+            mp4:'fa-file-video', mov:'fa-file-video', avi:'fa-file-video',
+            mkv:'fa-file-video', webm:'fa-file-video', flv:'fa-file-video',
+            mp3:'fa-file-audio', wav:'fa-file-audio', ogg:'fa-file-audio',
+            flac:'fa-file-audio', aac:'fa-file-audio', m4a:'fa-file-audio',
+            zip:'fa-file-zipper', rar:'fa-file-zipper', '7z':'fa-file-zipper',
+            tar:'fa-file-zipper', gz:'fa-file-zipper',
+            js:'fa-file-code', ts:'fa-file-code', jsx:'fa-file-code',
+            html:'fa-file-code', css:'fa-file-code', py:'fa-file-code',
+            java:'fa-file-code', cpp:'fa-file-code', c:'fa-file-code',
+            json:'fa-file-code', xml:'fa-file-code', sql:'fa-file-code',
+            txt:'fa-file-lines', md:'fa-file-lines', log:'fa-file-lines',
+            exe:'fa-file', dmg:'fa-file', iso:'fa-file'
+        };
+        return map[ext] || 'fa-file';
+    }
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    /* ===== TOAST ===== */
+    function showToast(msg, type = 'info') {
+        const icons = { info: 'fa-circle-info', success: 'fa-circle-check', error: 'fa-circle-exclamation' };
+        const t = document.createElement('div');
+        t.className = 'toast ' + type;
+        t.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${msg}</span>`;
+        document.getElementById('toasts').appendChild(t);
+        setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, 3500);
+    }
+
+    /* ===== BACKGROUND ANIMATION ===== */
+    (function initBg() {
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+        let W, H, particles = [], mouse = { x: -1000, y: -1000 };
+        const PARTICLE_COUNT = 55;
+        const CONNECT_DIST = 140;
+        const MOUSE_DIST = 180;
+
+        function resize() {
+            W = canvas.width = window.innerWidth;
+            H = canvas.height = window.innerHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+        document.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+
+        // Create particles
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            particles.push({
+                x: Math.random() * W,
+                y: Math.random() * H,
+                vx: (Math.random() - 0.5) * 0.3,
+                vy: (Math.random() - 0.5) * 0.3,
+                r: Math.random() * 1.5 + 0.5,
+                highlight: Math.random() < 0.12 // Some particles are accent-colored
+            });
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, W, H);
+            // Update & draw
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.x < 0) p.x = W;
+                if (p.x > W) p.x = 0;
+                if (p.y < 0) p.y = H;
+                if (p.y > H) p.y = 0;
+
+                // Draw particle
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                if (p.highlight) {
+                    ctx.fillStyle = 'rgba(232,160,48,0.5)';
+                } else {
+                    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                }
+                ctx.fill();
+
+                // Connections
+                for (let j = i + 1; j < particles.length; j++) {
+                    const q = particles[j];
+                    const dx = p.x - q.x;
+                    const dy = p.y - q.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < CONNECT_DIST) {
+                        const alpha = (1 - dist / CONNECT_DIST) * 0.08;
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(q.x, q.y);
+                        ctx.strokeStyle = `rgba(232,160,48,${alpha})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                }
+
+                // Mouse interaction
+                const mdx = p.x - mouse.x;
+                const mdy = p.y - mouse.y;
+                const mDist = Math.sqrt(mdx * mdx + mdy * mdy);
+                if (mDist < MOUSE_DIST) {
+                    const alpha = (1 - mDist / MOUSE_DIST) * 0.2;
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(mouse.x, mouse.y);
+                    ctx.strokeStyle = `rgba(232,160,48,${alpha})`;
+                    ctx.lineWidth = 0.6;
+                    ctx.stroke();
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        // Respect reduced motion
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            animate();
+        } else {
+            // Draw static frame
+            for (const p of particles) {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = p.highlight ? 'rgba(232,160,48,0.5)' : 'rgba(255,255,255,0.15)';
+                ctx.fill();
+            }
+        }
+    })();
+    </script>
+</body>
+</html>
