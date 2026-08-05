@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DropLink — P2P File Transfer</title>
+    <title>DropLink — One-Time P2P File Transfer</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23e8a030'/%3E%3Cpath d='M16 9v11m0 0l-3.5-3.5M16 20l3.5-3.5' stroke='%2308080f' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -12,13 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;400;600;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        :root {
-            --bg:#08080f;--card:rgba(255,255,255,0.03);--card-h:rgba(255,255,255,0.06);
-            --bdr:rgba(255,255,255,0.07);--bdr-h:rgba(255,255,255,0.14);
-            --txt:#e8e8ec;--dim:#6b6b78;
-            --acc:#e8a030;--acc-h:#f0b848;--acc-g:rgba(232,160,48,0.12);
-            --ok:#34d399;--err:#f87171;
-        }
+        :root{--bg:#08080f;--card:rgba(255,255,255,0.03);--card-h:rgba(255,255,255,0.06);--bdr:rgba(255,255,255,0.07);--bdr-h:rgba(255,255,255,0.14);--txt:#e8e8ec;--dim:#6b6b78;--acc:#e8a030;--acc-h:#f0b848;--acc-g:rgba(232,160,48,0.12);--ok:#34d399;--err:#f87171}
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
         body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
         #bgC{position:fixed;inset:0;z-index:0;pointer-events:none}
@@ -34,10 +28,10 @@
         .scr.act{display:flex}
         @keyframes fu{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 
-        .hero{text-align:center;margin-top:11vh;margin-bottom:3rem}
+        .hero{text-align:center;margin-top:10vh;margin-bottom:3rem}
         .hero h1{font-size:clamp(2.2rem,5vw,3.4rem);font-weight:900;letter-spacing:-0.04em;line-height:1.1;margin-bottom:1rem}
         .hero h1 em{font-style:normal;color:var(--acc)}
-        .hero p{color:var(--dim);font-size:1.1rem;font-weight:200;max-width:440px;margin:0 auto}
+        .hero p{color:var(--dim);font-size:1.05rem;font-weight:200;max-width:460px;margin:0 auto;line-height:1.5}
         .hc{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;width:100%}
         .hcd{background:var(--card);border:1px solid var(--bdr);border-radius:16px;padding:2.5rem 1.5rem;text-align:center;cursor:pointer;transition:all .3s;position:relative;overflow:hidden}
         .hcd::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,var(--acc-g),transparent 70%);opacity:0;transition:opacity .4s}
@@ -46,9 +40,10 @@
         .hcd i{font-size:2.2rem;color:var(--acc);margin-bottom:1rem;position:relative;z-index:1}
         .hcd h2{font-size:1.2rem;font-weight:600;margin-bottom:.5rem;position:relative;z-index:1}
         .hcd p{color:var(--dim);font-size:.88rem;position:relative;z-index:1}
-        .hn{margin-top:3rem;color:var(--dim);font-size:.78rem;text-align:center;opacity:.6}
+        .hn{margin-top:3rem;color:var(--dim);font-size:.78rem;text-align:center;opacity:.6;line-height:1.6;max-width:500px;margin-left:auto;margin-right:auto}
+        .hn i{color:var(--acc)}
 
-        .st{font-size:1.5rem;font-weight:800;margin-top:7vh;margin-bottom:1.2rem;letter-spacing:-0.02em}
+        .st{font-size:1.5rem;font-weight:800;margin-top:6vh;margin-bottom:1.2rem;letter-spacing:-0.02em}
         .dz{width:100%;border:2px dashed var(--bdr);border-radius:16px;padding:3rem 2rem;text-align:center;cursor:pointer;transition:all .3s;position:relative;background:var(--card)}
         .dz:hover,.dz.dov{border-color:var(--acc);background:var(--acc-g)}
         .dz i{font-size:2.5rem;color:var(--acc);margin-bottom:1rem}
@@ -61,6 +56,32 @@
         .fi .fs{color:var(--dim);white-space:nowrap}
         .fi .fr{background:none;border:none;color:var(--dim);cursor:pointer;padding:.2rem .4rem;border-radius:4px;transition:color .2s}
         .fi .fr:hover{color:var(--err)}
+
+        /* Code Config */
+        .code-cfg{width:100%;margin-top:1.5rem;background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:1.2rem 1.3rem}
+        .code-cfg-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem}
+        .code-cfg-label{display:flex;align-items:center;gap:.5rem;font-weight:600;font-size:.95rem}
+        .code-cfg-label i{color:var(--acc)}
+        .ot-badge{display:inline-flex;align-items:center;gap:.35rem;background:rgba(232,160,48,0.1);border:1px solid rgba(232,160,48,0.2);color:var(--acc);font-size:.7rem;font-weight:600;padding:.25rem .6rem;border-radius:6px;text-transform:uppercase;letter-spacing:.04em}
+        .ot-badge i{font-size:.6rem}
+        @keyframes badgePulse{0%,100%{box-shadow:0 0 0 0 rgba(232,160,48,0.2)}50%{box-shadow:0 0 0 4px rgba(232,160,48,0)}}
+        .ot-badge{animation:badgePulse 3s infinite}
+        .code-modes{display:flex;gap:.5rem;margin-bottom:1rem}
+        .cm-btn{flex:1;padding:.6rem;background:var(--card);border:1px solid var(--bdr);border-radius:10px;color:var(--dim);font-family:inherit;font-size:.85rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.4rem}
+        .cm-btn:hover{border-color:var(--bdr-h);color:var(--txt)}
+        .cm-btn.active{border-color:var(--acc);color:var(--acc);background:var(--acc-g)}
+        .cc-custom{margin-bottom:1rem}
+        .cc-input{width:100%;font-family:'Courier New',monospace;font-size:1.6rem;font-weight:700;letter-spacing:.4em;text-indent:.4em;text-transform:uppercase;background:rgba(0,0,0,0.3);border:2px solid var(--bdr);border-radius:12px;padding:.7rem 1rem;color:var(--acc);outline:none;transition:border-color .3s}
+        .cc-input:focus{border-color:var(--acc)}
+        .cc-input.invalid{border-color:var(--err)}
+        .cc-input::placeholder{color:rgba(232,160,48,0.15);letter-spacing:.2em;text-indent:.2em;font-weight:400;font-size:1.1rem}
+        .cc-meta{display:flex;justify-content:space-between;align-items:center;margin-top:.5rem}
+        .cc-chars{color:var(--dim);font-size:.75rem}
+        .cc-chars.full{color:var(--ok)}
+        .cc-hint{color:var(--dim);font-size:.72rem;opacity:.6}
+        .ot-info{display:flex;align-items:flex-start;gap:.5rem;color:var(--dim);font-size:.78rem;line-height:1.5}
+        .ot-info i{color:var(--acc);margin-top:.15rem;flex-shrink:0;font-size:.75rem}
+
         .bp{margin-top:1.5rem;width:100%;padding:.9rem 1.5rem;background:var(--acc);color:#000;border:none;border-radius:12px;font-family:inherit;font-size:1rem;font-weight:600;cursor:pointer;transition:all .25s}
         .bp:hover{background:var(--acc-h);transform:translateY(-1px)}
         .bp:disabled{opacity:.35;cursor:not-allowed;transform:none}
@@ -80,7 +101,9 @@
         .dp span:nth-child(3){animation-delay:.4s}
         @keyframes dpA{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1.1)}}
 
-        /* QR Code Styles */
+        .ot-warn{display:flex;align-items:center;gap:.5rem;margin-top:1.5rem;color:var(--dim);font-size:.82rem;flex-wrap:wrap;justify-content:center}
+        .ot-warn i{color:var(--acc)}
+        .ot-warn strong{color:var(--acc);font-weight:600}
         .qr-wrap{margin-top:1.5rem;text-align:center}
         .qr-box{display:inline-block;padding:1rem;background:#fff;border-radius:14px}
         .qr-box canvas,.qr-box img{display:block;border-radius:8px}
@@ -91,12 +114,10 @@
         .cii:focus{border-color:var(--acc)}
         .cii::placeholder{color:rgba(232,160,48,0.2)}
 
-        /* Receiver icon */
         .recv-hero{text-align:center;margin-top:5vh;margin-bottom:1.5rem}
         .recv-icon{width:80px;height:80px;border-radius:22px;background:linear-gradient(135deg,rgba(232,160,48,0.15),rgba(232,160,48,0.05));border:1px solid rgba(232,160,48,0.2);display:inline-flex;align-items:center;justify-content:center;margin-bottom:1rem}
         .recv-icon i{font-size:2rem;color:var(--acc)}
 
-        /* QR Scanner */
         .qr-scan-btn{width:100%;max-width:380px;margin:1rem auto 0;padding:.8rem 1.5rem;background:var(--card);color:var(--txt);border:1px solid var(--bdr);border-radius:12px;font-family:inherit;font-size:.95rem;cursor:pointer;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:.5rem}
         .qr-scan-btn:hover{border-color:var(--acc);background:var(--acc-g)}
         .qr-scan-btn i{color:var(--acc)}
@@ -133,7 +154,13 @@
 
         .si{font-size:4rem;color:var(--ok);margin-bottom:1.5rem}
         .sut{font-size:1.5rem;font-weight:800;margin-bottom:.5rem}
-        .sub{color:var(--dim);margin-bottom:2rem}
+        .sub{color:var(--dim);margin-bottom:1rem}
+
+        /* Invalidated notice */
+        .inv-notice{display:flex;align-items:center;gap:.6rem;background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.12);border-radius:10px;padding:.7rem 1rem;margin-bottom:1.5rem;font-size:.84rem;color:var(--err)}
+        .inv-notice i{font-size:.9rem;flex-shrink:0}
+        .inv-code{font-family:'Courier New',monospace;font-weight:700;text-decoration:line-through;opacity:.8}
+
         .rl{width:100%;margin-bottom:1.5rem;display:flex;flex-direction:column;gap:.4rem}
         .ri{display:flex;align-items:center;gap:.7rem;background:var(--card);border:1px solid var(--bdr);border-radius:10px;padding:.6rem 1rem;font-size:.88rem}
         .ri i{color:var(--ok)}
@@ -152,6 +179,12 @@
         .prep-wrap p{color:var(--dim);font-size:.95rem}
         .prep-wrap .prep-detail{color:var(--dim);font-size:.82rem;margin-top:.5rem;opacity:.7}
 
+        /* Expired code error */
+        .err-box{text-align:center;padding:2rem 0}
+        .err-box i{font-size:3rem;color:var(--err);margin-bottom:1rem}
+        .err-box h3{font-size:1.2rem;font-weight:700;margin-bottom:.5rem}
+        .err-box p{color:var(--dim);font-size:.9rem;max-width:340px;margin:0 auto}
+
         #toasts{position:fixed;top:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem}
         .toast{background:#1a1a24;border:1px solid var(--bdr);border-radius:10px;padding:.7rem 1.2rem;font-size:.88rem;color:var(--txt);animation:tIn .3s ease;min-width:220px;max-width:380px;display:flex;align-items:center;gap:.6rem;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
         .toast.error{border-color:rgba(248,113,113,0.3)}.toast.error i{color:var(--err)}
@@ -164,15 +197,16 @@
         @media(max-width:560px){
             .hc{grid-template-columns:1fr}
             .hero{margin-top:5vh}
-            .cc,.cii{font-size:2rem;letter-spacing:.35em;text-indent:.35em}
+            .cc,.cii,.cc-input{font-size:1.6rem;letter-spacing:.3em;text-indent:.3em}
             .th{gap:.4rem}
             .th .ts{display:none}
             .recv-icon{width:64px;height:64px;border-radius:18px}
             .qr-box{padding:.7rem}
+            .code-cfg{padding:1rem}
+            .code-modes{flex-direction:column}
         }
         @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
     </style>
-<base target="_blank">
 </head>
 <body>
     <canvas id="bgC"></canvas>
@@ -186,22 +220,22 @@
         <!-- HOME -->
         <section id="homeScr" class="scr act">
             <div class="hero">
-                <h1>Send files,<br><em>peer to peer</em></h1>
-                <p>No servers, no size limits, no sign-up. Files are compressed before transfer — less upload, original on arrival.</p>
+                <h1>Send files,<br><em>one code only</em></h1>
+                <p>Create a custom or auto-generated code. Share it via pin or QR. The code expires after one transfer — no one else can use it.</p>
             </div>
             <div class="hc">
                 <div class="hcd" onclick="startSend()" tabindex="0" role="button" aria-label="Send files">
                     <i class="fas fa-arrow-up-from-bracket"></i>
                     <h2>Send Files</h2>
-                    <p>Pick files, get a short code & QR</p>
+                    <p>Pick files, set a custom code</p>
                 </div>
                 <div class="hcd" onclick="startRecv()" tabindex="0" role="button" aria-label="Receive files">
                     <i class="fas fa-qrcode"></i>
                     <h2>Receive Files</h2>
-                    <p>Scan QR or enter a code</p>
+                    <p>Enter pin or scan QR code</p>
                 </div>
             </div>
-            <p class="hn"><i class="fas fa-shield-halved"></i> &nbsp;Files never touch any server. Gzip compression reduces your upload. Original files on the other side.</p>
+            <p class="hn"><i class="fas fa-shield-halved"></i> P2P encrypted — files never touch any server. Gzip compression reduces upload. Code self-destructs after one use.</p>
         </section>
 
         <!-- SENDER -->
@@ -214,6 +248,30 @@
                     <input type="file" id="fIn" multiple aria-label="Select files">
                 </div>
                 <div class="fl" id="sFL"></div>
+
+                <!-- Code Configuration -->
+                <div class="code-cfg" id="codeCfg">
+                    <div class="code-cfg-top">
+                        <div class="code-cfg-label"><i class="fas fa-key"></i><span>Transfer Code</span></div>
+                        <div class="ot-badge"><i class="fas fa-lock"></i><span>One-Time Use</span></div>
+                    </div>
+                    <div class="code-modes">
+                        <button class="cm-btn active" id="cmAuto" onclick="setCodeMode('auto')"><i class="fas fa-shuffle"></i> Auto Generate</button>
+                        <button class="cm-btn" id="cmCustom" onclick="setCodeMode('custom')"><i class="fas fa-pen"></i> Custom Code</button>
+                    </div>
+                    <div class="cc-custom" id="ccCustom" style="display:none">
+                        <input type="text" id="ccInput" class="cc-input" maxlength="6" placeholder="e.g. SHARE" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" aria-label="Custom 6-character code">
+                        <div class="cc-meta">
+                            <span class="cc-chars" id="ccChars">0 / 6</span>
+                            <span class="cc-hint">A-Z, 2-9 only (no I, O, 0, 1)</span>
+                        </div>
+                    </div>
+                    <div class="ot-info">
+                        <i class="fas fa-circle-info"></i>
+                        <span>Code is permanently destroyed after one successful transfer. Both devices must stay connected during transfer.</span>
+                    </div>
+                </div>
+
                 <button class="bp" id="crtBtn" disabled onclick="createLink()">Create Link</button>
             </div>
             <div id="s2" style="display:none">
@@ -229,6 +287,14 @@
                     <div class="qr-box" id="qrBox"></div>
                     <p class="qr-label">Scan with phone camera or DropLink receiver</p>
                 </div>
+                <div class="ot-warn">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    <span><strong>One-time code</strong> — expires after one successful transfer</span>
+                </div>
+                <div class="ot-warn" style="margin-top:.4rem;font-size:.78rem;opacity:.7">
+                    <i class="fas fa-wifi"></i>
+                    <span>Keep this tab open until transfer completes</span>
+                </div>
                 <div class="wm">Waiting for receiver <span class="dp"><span></span><span></span><span></span></span></div>
             </div>
             <div id="s3" style="display:none">
@@ -240,22 +306,20 @@
                 </div>
                 <div class="tl" id="sTL"></div>
                 <div class="ob" id="sOB" style="display:none">
-                    <div class="ol">
-                        <span>Overall Upload</span>
-                        <span id="sOPct">0%</span>
-                    </div>
+                    <div class="ol"><span>Overall Upload</span><span id="sOPct">0%</span></div>
                     <div class="ol" style="margin-top:-.3rem" id="sCompRow"></div>
                     <div class="obr"><div class="obf" id="sOFill"></div></div>
-                    <div class="obs">
-                        <span><strong id="sSpd">0 B/s</strong></span>
-                        <span id="sEta">calculating...</span>
-                    </div>
+                    <div class="obs"><span><strong id="sSpd">0 B/s</strong></span><span id="sEta">calculating...</span></div>
                 </div>
             </div>
             <div id="s4" style="display:none;text-align:center">
                 <i class="fas fa-circle-check si"></i>
                 <h2 class="sut">Files sent successfully</h2>
                 <p class="sub" id="sDone"></p>
+                <div class="inv-notice">
+                    <i class="fas fa-lock"></i>
+                    <span>Code <span class="inv-code" id="invCode">------</span> has been invalidated and can no longer be used</span>
+                </div>
                 <button class="bp" onclick="goHome()" style="max-width:280px;margin:0 auto">Send More Files</button>
             </div>
         </section>
@@ -274,6 +338,11 @@
                 <button class="qr-scan-btn" onclick="openQrScanner()">
                     <i class="fas fa-camera"></i> Scan QR Code Instead
                 </button>
+                <div id="rErr" style="display:none" class="err-box">
+                    <i class="fas fa-link-slash"></i>
+                    <h3 id="rErrTitle">Code Expired</h3>
+                    <p id="rErrMsg">This code has already been used or the sender is no longer online.</p>
+                </div>
             </div>
             <div id="r2" style="display:none">
                 <div class="spw"><div class="sp"></div><p>Connecting to sender...</p></div>
@@ -285,16 +354,10 @@
                 <h2 class="st" style="margin-top:0">Receiving files</h2>
                 <div class="tl" id="rTL"></div>
                 <div class="ob" id="rOB" style="display:none">
-                    <div class="ol">
-                        <span>Overall Download</span>
-                        <span id="rOPct">0%</span>
-                    </div>
+                    <div class="ol"><span>Overall Download</span><span id="rOPct">0%</span></div>
                     <div class="ol" style="margin-top:-.3rem" id="rCompRow"></div>
                     <div class="obr"><div class="obf" id="rOFill"></div></div>
-                    <div class="obs">
-                        <span><strong id="rSpd">0 B/s</strong></span>
-                        <span id="rEta">calculating...</span>
-                    </div>
+                    <div class="obs"><span><strong id="rSpd">0 B/s</strong></span><span id="rEta">calculating...</span></div>
                 </div>
             </div>
             <div id="r4" style="display:none;text-align:center">
@@ -303,6 +366,10 @@
                 </div>
                 <h2 class="sut">Files received</h2>
                 <p class="sub" id="rDone"></p>
+                <div class="inv-notice">
+                    <i class="fas fa-lock"></i>
+                    <span>The transfer code has been permanently invalidated</span>
+                </div>
                 <div class="rl" id="rFL"></div>
                 <button class="bp" id="dlZip" onclick="dlAllZip()" style="max-width:380px;margin:0 auto"><i class="fas fa-file-zipper"></i> &nbsp;Download All as ZIP</button>
                 <button class="bs" onclick="goHome()" style="max-width:380px;margin:0 auto">Receive More Files</button>
@@ -325,109 +392,188 @@
     if(typeof Peer==='undefined'){document.getElementById('app').innerHTML='<div style="text-align:center;padding:4rem 2rem;color:var(--err)"><i class="fas fa-triangle-exclamation" style="font-size:3rem;margin-bottom:1rem;display:block"></i><h2 style="margin-bottom:.5rem">Failed to load PeerJS</h2><p style="color:var(--dim)">Check your internet and refresh.</p></div>';throw new Error('PeerJS missing');}
 
     const CHUNK=16384;
-    let peer=null,conn=null,selFiles=[],sCode='',recvFiles=[];
+    const VALID_CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let peer=null,conn=null,selFiles=[],sCode='',recvFiles=[],codeMode='auto',codeUsed=false;
     let T={active:false,totalBytes:0,doneBytes:0,origTotal:0,fs:[],t0:0,lb:0,lt:0,spd:0,iv:null};
     let qrScanner=null;
 
-    /* --- Screens --- */
+    /* ========== SCREENS ========== */
     function showScr(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));document.getElementById(id).classList.add('act');document.getElementById('backBtn').classList.toggle('vis',id!=='homeScr');}
     function sStep(n){for(let i=1;i<=4;i++)document.getElementById('s'+i).style.display=i===n?'':'none';}
     function rStep(n){for(let i=1;i<=4;i++)document.getElementById('r'+i).style.display=i===n?'':'none';}
-    function goHome(){cleanup();selFiles=[];recvFiles=[];document.getElementById('sFL').innerHTML='';document.getElementById('fIn').value='';document.getElementById('crtBtn').disabled=true;document.getElementById('cIn').value='';clearQr();sStep(1);rStep(1);showScr('homeScr');}
-    function cleanup(){if(T.iv){clearInterval(T.iv);T.iv=null;}T.active=false;if(conn){try{conn.close();}catch(e){}conn=null;}if(peer){try{peer.destroy();}catch(e){}peer=null;}closeQrScanner();}
-    function startSend(){showScr('sendScr');sStep(1);}
-    function startRecv(){showScr('recvScr');rStep(1);setTimeout(()=>document.getElementById('cIn').focus(),100);}
 
-    /* --- QR Code --- */
+    function goHome(){
+        cleanup();selFiles=[];recvFiles=[];codeUsed=false;
+        document.getElementById('sFL').innerHTML='';
+        document.getElementById('fIn').value='';
+        document.getElementById('crtBtn').disabled=true;
+        document.getElementById('crtBtn').textContent='Create Link';
+        document.getElementById('cIn').value='';
+        document.getElementById('rErr').style.display='none';
+        clearQr();
+        sStep(1);rStep(1);showScr('homeScr');
+    }
+
+    function cleanup(){
+        if(T.iv){clearInterval(T.iv);T.iv=null;}
+        T.active=false;
+        if(conn){try{conn.close();}catch(e){}conn=null;}
+        if(peer){try{peer.destroy();}catch(e){}peer=null;}
+        closeQrScanner();
+    }
+
+    function startSend(){showScr('sendScr');sStep(1);}
+    function startRecv(){showScr('recvScr');rStep(1);document.getElementById('rErr').style.display='none';setTimeout(()=>document.getElementById('cIn').focus(),100);}
+
+    /* ========== CODE MODE ========== */
+    function setCodeMode(mode){
+        codeMode=mode;
+        document.getElementById('cmAuto').classList.toggle('active',mode==='auto');
+        document.getElementById('cmCustom').classList.toggle('active',mode==='custom');
+        document.getElementById('ccCustom').style.display=mode==='custom'?'':'none';
+        if(mode==='custom'){
+            setTimeout(()=>document.getElementById('ccInput').focus(),50);
+        }
+    }
+
+    // Custom code input handler
+    document.getElementById('ccInput').addEventListener('input',function(){
+        // Filter to valid characters only
+        let v=this.value.toUpperCase().replace(/[^A-Z23456789]/g,'').slice(0,6);
+        this.value=v;
+        const charsEl=document.getElementById('ccChars');
+        charsEl.textContent=v.length+' / 6';
+        charsEl.classList.toggle('full',v.length===6);
+        this.classList.toggle('invalid',v.length===6&&!isValidCode(v));
+    });
+
+    function isValidCode(c){return c.length===6&&/^[A-Z23456789]{6}$/.test(c);}
+
+    /* ========== QR CODE ========== */
     function showQr(code){
-        const box=document.getElementById('qrBox');
-        box.innerHTML='';
-        // Generate QR with the code and a droplink:// URL scheme for app deep-linking
-        const qrData='droplink://'+code;
-        new QRCode(box,{
-            text:qrData,
-            width:180,
-            height:180,
-            colorDark:'#08080f',
-            colorLight:'#ffffff',
-            correctLevel:QRCode.CorrectLevel.M
-        });
+        const box=document.getElementById('qrBox');box.innerHTML='';
+        new QRCode(box,{text:'droplink://'+code,width:180,height:180,colorDark:'#08080f',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
     }
     function clearQr(){document.getElementById('qrBox').innerHTML='';}
 
-    /* --- QR Scanner --- */
+    /* ========== QR SCANNER ========== */
     function openQrScanner(){
-        const wrap=document.getElementById('qrScannerWrap');
-        wrap.classList.add('active');
-        if(!qrScanner){
-            qrScanner=new Html5Qrcode('reader');
-        }
-        qrScanner.start(
-            {facingMode:'environment'},
-            {fps:10,qrbox:{width:250,height:250}},
-            (decodedText)=>{
-                // Try to extract 6-char code from various formats
+        const wrap=document.getElementById('qrScannerWrap');wrap.classList.add('active');
+        if(!qrScanner)qrScanner=new Html5Qrcode('reader');
+        qrScanner.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:250}},
+            (txt)=>{
                 let code='';
-                const match=decodedText.match(/([A-Z0-9]{6})/);
-                if(match)code=match[1];
-                else if(decodedText.length===6&&/^[A-Z0-9]+$/.test(decodedText.toUpperCase()))code=decodedText.toUpperCase();
+                const m=txt.match(/([A-Z0-9]{6})/);
+                if(m)code=m[1];
+                else if(txt.length===6&&/^[A-Z0-9]+$/.test(txt.toUpperCase()))code=txt.toUpperCase();
                 if(code){
                     closeQrScanner();
                     document.getElementById('cIn').value=code;
                     showToast('QR scanned: '+code,'success');
                     setTimeout(()=>connectToSender(),300);
-                }else{
-                    showToast('Invalid QR code','error');
-                }
-            },
-            (err)=>{/* ignore scan errors */}
-        ).catch(e=>{
-            showToast('Camera error: '+e.message,'error');
-            closeQrScanner();
-        });
+                }else{showToast('Invalid QR code','error');}
+            },()=>{}
+        ).catch(e=>{showToast('Camera error: '+e.message,'error');closeQrScanner();});
     }
     function closeQrScanner(){
-        const wrap=document.getElementById('qrScannerWrap');
-        wrap.classList.remove('active');
-        if(qrScanner){
-            qrScanner.stop().catch(()=>{});
-        }
+        document.getElementById('qrScannerWrap').classList.remove('active');
+        if(qrScanner)qrScanner.stop().catch(()=>{});
     }
 
-    /* --- File Selection --- */
+    /* ========== FILE SELECTION ========== */
     const dz=document.getElementById('dz'),fIn=document.getElementById('fIn');
     dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dov');});
     dz.addEventListener('dragleave',()=>dz.classList.remove('dov'));
     dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dov');addF(e.dataTransfer.files);});
     fIn.addEventListener('change',()=>{addF(fIn.files);fIn.value='';});
+
     function addF(fl){for(const f of fl)selFiles.push(f);renderFL();}
     function rmF(i){selFiles.splice(i,1);renderFL();}
-    function renderFL(){const el=document.getElementById('sFL');el.innerHTML=selFiles.map((f,i)=>`<div class="fi"><i class="fas ${fIcon(f.name)} ic"></i><span class="fn" title="${f.name}">${f.name}</span><span class="fs">${fmtS(f.size)}</span><button class="fr" onclick="rmF(${i})" aria-label="Remove"><i class="fas fa-xmark"></i></button></div>`).join('');document.getElementById('crtBtn').disabled=!selFiles.length;}
+    function renderFL(){
+        const el=document.getElementById('sFL');
+        el.innerHTML=selFiles.map((f,i)=>`<div class="fi"><i class="fas ${fIcon(f.name)} ic"></i><span class="fn" title="${f.name}">${f.name}</span><span class="fs">${fmtS(f.size)}</span><button class="fr" onclick="rmF(${i})" aria-label="Remove"><i class="fas fa-xmark"></i></button></div>`).join('');
+        document.getElementById('crtBtn').disabled=!selFiles.length;
+    }
 
-    /* --- Create Link --- */
+    /* ========== CREATE LINK ========== */
     async function createLink(){
-        const btn=document.getElementById('crtBtn');btn.disabled=true;btn.textContent='Creating link...';
+        const btn=document.getElementById('crtBtn');
+        btn.disabled=true;btn.textContent='Creating link...';
+
+        // Determine code
+        let code='';
+        if(codeMode==='custom'){
+            code=document.getElementById('ccInput').value.trim().toUpperCase();
+            if(!isValidCode(code)){
+                showToast('Custom code must be 6 characters: A-Z and 2-9 only','error');
+                btn.disabled=false;btn.textContent='Create Link';
+                return;
+            }
+        }else{
+            code=genCode();
+        }
+        sCode=code;
+
         try{
-            sCode=genCode();peer=new Peer('dl-'+sCode,{debug:0});
+            peer=new Peer('dl-'+sCode,{debug:0});
             await new Promise((res,rej)=>{peer.on('open',res);peer.on('error',rej);});
+
+            // Link created successfully
             document.getElementById('sCode').textContent=sCode;
+            document.getElementById('invCode').textContent=sCode;
             showQr(sCode);
             sStep(2);
+
             peer.on('connection',onConn);
-            peer.on('error',err=>{if(err.type==='unavailable-id'){showToast('Code collision, retrying...','info');cleanup();createLink();}else showToast('Error: '+err.message,'error');});
-        }catch(e){showToast('Failed to create link. Check connection.','error');btn.disabled=false;btn.textContent='Create Link';}
+            peer.on('error',err=>{
+                if(err.type==='unavailable-id'){
+                    if(codeMode==='custom'){
+                        showToast('Code "'+sCode+'" is already in use. Try a different one.','error');
+                        sStep(1);
+                        btn.disabled=false;btn.textContent='Create Link';
+                        cleanup();
+                    }else{
+                        showToast('Code collision, regenerating...','info');
+                        cleanup();
+                        createLink();
+                    }
+                }else{
+                    showToast('Error: '+err.message,'error');
+                }
+            });
+        }catch(e){
+            showToast('Failed to create link. Check your connection.','error');
+            btn.disabled=false;btn.textContent='Create Link';
+        }
     }
+
     function onConn(c){
         conn=c;
-        conn.on('open',()=>{showToast('Receiver connected!','success');beginSend();});
-        conn.on('close',()=>{if(T.active)showToast('Receiver disconnected','error');});
+        conn.on('open',()=>{
+            showToast('Receiver connected!','success');
+            beginSend();
+        });
+        conn.on('close',()=>{
+            if(T.active)showToast('Receiver disconnected','error');
+            invalidateCode();
+        });
         conn.on('error',err=>showToast('Error: '+err.message,'error'));
     }
 
-    /* --- Compression --- */
+    /* ========== INVALIDATE CODE ========== */
+    function invalidateCode(){
+        if(codeUsed)return;
+        codeUsed=true;
+        // Destroy peer after a short delay to ensure final messages are sent
+        setTimeout(()=>{
+            if(peer){try{peer.destroy();}catch(e){}peer=null;}
+        },1500);
+    }
+
+    /* ========== COMPRESSION ========== */
     async function prepFile(file){
         const r={name:file.name,origSize:file.size,sendSize:file.size,compressed:false,data:null,file};
-        if(file.size>0 && file.size<=500*1024*1024 && typeof CompressionStream!=='undefined'){
+        if(file.size>0&&file.size<=500*1024*1024&&typeof CompressionStream!=='undefined'){
             try{
                 const cs=new CompressionStream('gzip');
                 const stream=file.stream().pipeThrough(cs);
@@ -438,7 +584,7 @@
         return r;
     }
 
-    /* --- Sender Transfer --- */
+    /* ========== SENDER TRANSFER ========== */
     async function beginSend(){
         sStep(3);
         document.getElementById('sPrep').style.display='';
@@ -463,9 +609,15 @@
         await slp(200);
 
         for(let i=0;i<T.fs.length;i++){if(!conn||!conn.open)break;await sendFile(i);}
+
         if(conn&&conn.open)conn.send({type:'all-done'});
+
+        // Wait a moment for the all-done to arrive, then invalidate
+        await slp(500);
+        invalidateCode();
         finishXfer('send');
     }
+
     async function sendFile(idx){
         const f=T.fs[idx];
         conn.send({type:'file-start',index:idx,name:f.name,origSize:f.origSize,sendSize:f.sendSize,compressed:f.compressed,totalChunks:f.totalChunks});
@@ -482,6 +634,7 @@
         conn.send({type:'file-end',index:idx});
         f.done=f.sendSize;T.doneBytes=T.fs.reduce((a,x)=>a+x.done,0);renderSendProg();
     }
+
     function renderSendProg(){
         document.getElementById('sTL').innerHTML=T.fs.map((f,i)=>{
             const pct=f.sendSize>0?Math.round(f.done/f.sendSize*100):0;
@@ -497,25 +650,58 @@
         }else{document.getElementById('sCompRow').innerHTML='';}
     }
 
-    /* --- Receiver Connect --- */
+    /* ========== RECEIVER CONNECT ========== */
     function connectToSender(){
         const raw=document.getElementById('cIn').value.trim().toUpperCase();
-        if(raw.length!==6||!/^[A-Z0-9]{6}$/.test(raw)){showToast('Enter a valid 6-character code','error');return;}
-        rStep(2);peer=new Peer(undefined,{debug:0});
+        document.getElementById('rErr').style.display='none';
+
+        if(raw.length!==6||!/^[A-Z0-9]{6}$/.test(raw)){
+            showToast('Enter a valid 6-character code','error');return;
+        }
+        rStep(2);
+        peer=new Peer(undefined,{debug:0});
+
+        let connected=false;
+
         peer.on('open',()=>{
             conn=peer.connect('dl-'+raw,{reliable:true});
-            conn.on('open',()=>{showToast('Connected!','success');setupRecv();});
-            conn.on('close',()=>{if(T.active)showToast('Sender disconnected','error');});
+            conn.on('open',()=>{
+                connected=true;
+                showToast('Connected!','success');
+                setupRecv();
+            });
+            conn.on('close',()=>{
+                if(T.active)showToast('Sender disconnected','error');
+            });
             conn.on('error',err=>showToast('Error: '+err.message,'error'));
-            setTimeout(()=>{if(conn&&!conn.open){showToast('Could not connect. Check the code.','error');rStep(1);cleanup();}},15000);
+
+            // Timeout: if not connected in 12s, show expired error
+            setTimeout(()=>{
+                if(!connected){
+                    showExpiredError(raw);
+                }
+            },12000);
         });
+
         peer.on('error',err=>{
-            if(err.type==='peer-unavailable'){showToast('Code not found. Ensure the sender has created the link.','error');}else{showToast('Error: '+err.message,'error');}
-            rStep(1);cleanup();
+            if(err.type==='peer-unavailable'){
+                showExpiredError(raw);
+            }else{
+                showToast('Error: '+err.message,'error');
+                rStep(1);cleanup();
+            }
         });
     }
 
-    /* --- Receiver Handlers --- */
+    function showExpiredError(code){
+        rStep(1);
+        cleanup();
+        document.getElementById('rErr').style.display='';
+        document.getElementById('rErrTitle').textContent='Code Not Found or Expired';
+        document.getElementById('rErrMsg').textContent='The code "'+code+'" has already been used, expired, or the sender is not online. Ask the sender to create a new code.';
+    }
+
+    /* ========== RECEIVER HANDLERS ========== */
     function setupRecv(){
         conn.on('data',async d=>{
             if(d.type==='file-list'){
@@ -526,7 +712,7 @@
                 T.active=true;T.t0=Date.now();T.lb=0;T.lt=Date.now();T.doneBytes=0;
                 rStep(3);renderRecvProg();startSpd('recv');
             }else if(d.type==='file-start'){
-                // just metadata, nothing to do
+                // metadata only
             }else if(d.type==='chunk'){
                 const fs=T.fs[d.index];if(!fs)return;
                 fs.chunks[d.chunkIndex]=d.data;
@@ -549,6 +735,7 @@
             }else if(d.type==='all-done'){finishXfer('recv');}
         });
     }
+
     function renderRecvProg(){
         document.getElementById('rTL').innerHTML=T.fs.map((f,i)=>{
             const pct=f.sendSize>0?Math.round(f.done/f.sendSize*100):0;
@@ -564,7 +751,7 @@
         }else{document.getElementById('rCompRow').innerHTML='';}
     }
 
-    /* --- Speed Tracker --- */
+    /* ========== SPEED TRACKER ========== */
     function startSpd(side){
         T.lb=0;T.lt=Date.now();T.spd=0;
         if(T.iv)clearInterval(T.iv);
@@ -572,64 +759,104 @@
             const now=Date.now(),el=(now-T.lt)/1000;
             if(el>=.5){T.spd=(T.doneBytes-T.lb)/el;T.lb=T.doneBytes;T.lt=now;}
             const rem=T.totalBytes-T.doneBytes,eta=T.spd>0?rem/T.spd:Infinity;
-            if(side==='send'){document.getElementById('sSpd').textContent=fmtSpd(T.spd);document.getElementById('sEta').textContent=T.doneBytes>=T.totalBytes?'Complete':'~ '+fmtT(eta);}
-            else{document.getElementById('rSpd').textContent=fmtSpd(T.spd);document.getElementById('rEta').textContent=T.doneBytes>=T.totalBytes?'Complete':'~ '+fmtT(eta);}
+            if(side==='send'){
+                document.getElementById('sSpd').textContent=fmtSpd(T.spd);
+                document.getElementById('sEta').textContent=T.doneBytes>=T.totalBytes?'Complete':'~ '+fmtT(eta);
+            }else{
+                document.getElementById('rSpd').textContent=fmtSpd(T.spd);
+                document.getElementById('rEta').textContent=T.doneBytes>=T.totalBytes?'Complete':'~ '+fmtT(eta);
+            }
         },500);
     }
+
     function finishXfer(side){
-        T.active=false;if(T.iv){clearInterval(T.iv);T.iv=null;}
+        T.active=false;
+        if(T.iv){clearInterval(T.iv);T.iv=null;}
         const el=(Date.now()-T.t0)/1000,avg=el>0?T.totalBytes/el:0;
+
         if(side==='send'){
             let info=`${selFiles.length} file${selFiles.length>1?'s':''} sent in ${fmtT(el)} — avg ${fmtSpd(avg)}`;
             if(T.origTotal>T.totalBytes)info+=`<br>Uploaded only ${fmtS(T.totalBytes)} of ${fmtS(T.origTotal)} (${Math.round((1-T.totalBytes/T.origTotal)*100)}% saved by compression)`;
-            document.getElementById('sDone').innerHTML=info;sStep(4);
+            document.getElementById('sDone').innerHTML=info;
+            sStep(4);
         }else{
             let info=`${recvFiles.length} file${recvFiles.length>1?'s':''} (${fmtS(T.origTotal)} original) received in ${fmtT(el)}`;
-            if(T.origTotal>T.totalBytes)info+=`<br>Only ${fmtS(T.totalBytes)} downloaded — ${Math.round((1-T.totalBytes/T.origTotal)*100)}% less data over the network`;
+            if(T.origTotal>T.totalBytes)info+=`<br>Only ${fmtS(T.totalBytes)} downloaded — ${Math.round((1-T.totalBytes/T.totalTotal)*100)}% less over network`;
             document.getElementById('rDone').innerHTML=info;
             renderRecvFL();rStep(4);
             if(typeof JSZip==='undefined')document.getElementById('dlZip').style.display='none';
         }
     }
 
-    /* --- Download --- */
+    /* ========== DOWNLOAD ========== */
     function renderRecvFL(){
         document.getElementById('rFL').innerHTML=recvFiles.map((f,i)=>`<div class="ri"><i class="fas ${fIcon(f.name)}"></i><span class="rn" title="${f.name}">${f.name}</span><span class="rs">${fmtS(f.size)}</span><button class="rd" onclick="dlOne(${i})" aria-label="Download ${f.name}"><i class="fas fa-download"></i></button></div>`).join('');
     }
-    function dlOne(i){const f=recvFiles[i];if(!f||!f.blob)return;const a=document.createElement('a');a.href=URL.createObjectURL(f.blob);a.download=f.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
+    function dlOne(i){
+        const f=recvFiles[i];if(!f||!f.blob)return;
+        const a=document.createElement('a');a.href=URL.createObjectURL(f.blob);a.download=f.name;a.click();
+        setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+    }
     async function dlAllZip(){
         if(typeof JSZip==='undefined'){showToast('ZIP library not loaded','error');return;}
         const btn=document.getElementById('dlZip');btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> &nbsp;Creating ZIP...';
-        try{const zip=new JSZip();const nc={};
-            for(const f of recvFiles){let n=f.name;if(nc[n]!==undefined){nc[n]++;n=n.replace(/(\.[^.]+)$/,' ('+nc[n]+')$1');}else nc[n]=0;zip.file(n,f.blob);}
-            const blob=await zip.generateAsync({type:'blob'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='droplink-files.zip';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+        try{
+            const zip=new JSZip();const nc={};
+            for(const f of recvFiles){
+                let n=f.name;
+                if(nc[n]!==undefined){nc[n]++;n=n.replace(/(\.[^.]+)$/,' ('+nc[n]+')$1');}else nc[n]=0;
+                zip.file(n,f.blob);
+            }
+            const blob=await zip.generateAsync({type:'blob'});
+            const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='droplink-files.zip';a.click();
+            setTimeout(()=>URL.revokeObjectURL(a.href),5000);
         }catch(e){showToast('Failed to create ZIP','error');}
         btn.disabled=false;btn.innerHTML='<i class="fas fa-file-zipper"></i> &nbsp;Download All as ZIP';
     }
 
-    /* --- Code Input --- */
-    document.getElementById('cIn').addEventListener('input',function(){this.value=this.value.replace(/[^a-zA-Z0-9]/g,'').toUpperCase().slice(0,6);});
+    /* ========== INPUT HANDLERS ========== */
+    document.getElementById('cIn').addEventListener('input',function(){
+        this.value=this.value.replace(/[^a-zA-Z0-9]/g,'').toUpperCase().slice(0,6);
+        document.getElementById('rErr').style.display='none';
+    });
     document.getElementById('cIn').addEventListener('keydown',function(e){if(e.key==='Enter')connectToSender();});
     document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeQrScanner();goHome();}});
     document.querySelectorAll('.hcd').forEach(c=>c.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();c.click();}}));
 
-    function copyCode(){navigator.clipboard.writeText(sCode).then(()=>showToast('Code copied!','success')).catch(()=>{const t=document.createElement('textarea');t.value=sCode;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);showToast('Code copied!','success');});}
+    function copyCode(){
+        navigator.clipboard.writeText(sCode).then(()=>showToast('Code copied!','success')).catch(()=>{
+            const t=document.createElement('textarea');t.value=sCode;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);showToast('Code copied!','success');
+        });
+    }
 
-    /* --- Helpers --- */
-    function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let r='';for(let i=0;i<6;i++)r+=c[Math.floor(Math.random()*c.length)];return r;}
+    /* ========== HELPERS ========== */
+    function genCode(){let r='';for(let i=0;i<6;i++)r+=VALID_CHARS[Math.floor(Math.random()*VALID_CHARS.length)];return r;}
     function fmtS(b){if(b===0)return'0 B';const u=['B','KB','MB','GB','TB'];const i=Math.floor(Math.log(b)/Math.log(1024));return(b/Math.pow(1024,i)).toFixed(i>0?1:0)+' '+u[i];}
     function fmtSpd(b){if(b<=0)return'0 B/s';const u=['B/s','KB/s','MB/s','GB/s'];const i=Math.floor(Math.log(b)/Math.log(1024));return(b/Math.pow(1024,i)).toFixed(1)+' '+u[i];}
     function fmtT(s){if(!isFinite(s)||s<0)return'--';if(s<60)return Math.ceil(s)+'s';const m=Math.floor(s/60),sec=Math.ceil(s%60);return m+'m '+sec+'s';}
     function slp(ms){return new Promise(r=>setTimeout(r,ms));}
-    function fIcon(n){const x=n.split('.').pop().toLowerCase(),m={pdf:'fa-file-pdf',doc:'fa-file-word',docx:'fa-file-word',xls:'fa-file-excel',xlsx:'fa-file-excel',csv:'fa-file-csv',ppt:'fa-file-powerpoint',pptx:'fa-file-powerpoint',jpg:'fa-file-image',jpeg:'fa-file-image',png:'fa-file-image',gif:'fa-file-image',svg:'fa-file-image',webp:'fa-file-image',bmp:'fa-file-image',mp4:'fa-file-video',mov:'fa-file-video',avi:'fa-file-video',mkv:'fa-file-video',webm:'fa-file-video',mp3:'fa-file-audio',wav:'fa-file-audio',ogg:'fa-file-audio',flac:'fa-file-audio',aac:'fa-file-audio',m4a:'fa-file-audio',zip:'fa-file-zipper',rar:'fa-file-zipper','7z':'fa-file-zipper',tar:'fa-file-zipper',gz:'fa-file-zipper',js:'fa-file-code',ts:'fa-file-code',html:'fa-file-code',css:'fa-file-code',py:'fa-file-code',java:'fa-file-code',cpp:'fa-file-code',json:'fa-file-code',xml:'fa-file-code',sql:'fa-file-code',txt:'fa-file-lines',md:'fa-file-lines',log:'fa-file-lines',exe:'fa-file',dmg:'fa-file',iso:'fa-file'};return m[x]||'fa-file';}
+    function fIcon(n){
+        const x=n.split('.').pop().toLowerCase();
+        const m={pdf:'fa-file-pdf',doc:'fa-file-word',docx:'fa-file-word',xls:'fa-file-excel',xlsx:'fa-file-excel',csv:'fa-file-csv',ppt:'fa-file-powerpoint',pptx:'fa-file-powerpoint',jpg:'fa-file-image',jpeg:'fa-file-image',png:'fa-file-image',gif:'fa-file-image',svg:'fa-file-image',webp:'fa-file-image',mp4:'fa-file-video',mov:'fa-file-video',avi:'fa-file-video',mkv:'fa-file-video',webm:'fa-file-video',mp3:'fa-file-audio',wav:'fa-file-audio',ogg:'fa-file-audio',flac:'fa-file-audio',aac:'fa-file-audio',zip:'fa-file-zipper',rar:'fa-file-zipper','7z':'fa-file-zipper',tar:'fa-file-zipper',gz:'fa-file-zipper',js:'fa-file-code',ts:'fa-file-code',html:'fa-file-code',css:'fa-file-code',py:'fa-file-code',java:'fa-file-code',cpp:'fa-file-code',json:'fa-file-code',xml:'fa-file-code',sql:'fa-file-code',txt:'fa-file-lines',md:'fa-file-lines',log:'fa-file-lines',exe:'fa-file',dmg:'fa-file',iso:'fa-file'};
+        return m[x]||'fa-file';
+    }
 
-    /* --- Toast --- */
-    function showToast(msg,type='info'){const ic={info:'fa-circle-info',success:'fa-circle-check',error:'fa-circle-exclamation'};const t=document.createElement('div');t.className='toast '+type;t.innerHTML=`<i class="fas ${ic[type]||ic.info}"></i><span>${msg}</span>`;document.getElementById('toasts').appendChild(t);setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),300);},3500);}
+    /* ========== TOAST ========== */
+    function showToast(msg,type='info'){
+        const ic={info:'fa-circle-info',success:'fa-circle-check',error:'fa-circle-exclamation'};
+        const t=document.createElement('div');t.className='toast '+type;
+        t.innerHTML=`<i class="fas ${ic[type]||ic.info}"></i><span>${msg}</span>`;
+        document.getElementById('toasts').appendChild(t);
+        setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),300);},3500);
+    }
 
-    /* --- Background --- */
+    /* ========== BACKGROUND PARTICLES ========== */
     (function(){
-        const c=document.getElementById('bgC'),ctx=c.getContext('2d');let W,H,pts=[],mx={x:-1e3,y:-1e3};const N=50,CD=140,MD=180;
-        function rs(){W=c.width=innerWidth;H=c.height=innerHeight;}rs();addEventListener('resize',rs);
+        const c=document.getElementById('bgC'),ctx=c.getContext('2d');
+        let W,H,pts=[],mx={x:-1e3,y:-1e3};
+        const N=50,CD=140,MD=180;
+        function rs(){W=c.width=innerWidth;H=c.height=innerHeight;}rs();
+        addEventListener('resize',rs);
         document.addEventListener('mousemove',e=>{mx.x=e.clientX;mx.y=e.clientY;});
         for(let i=0;i<N;i++)pts.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,r:Math.random()*1.5+.5,hl:Math.random()<.12});
         function draw(){
@@ -639,8 +866,10 @@
                 if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;
                 ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
                 ctx.fillStyle=p.hl?'rgba(232,160,48,0.5)':'rgba(255,255,255,0.15)';ctx.fill();
-                for(let j=i+1;j<pts.length;j++){const q=pts[j],dx=p.x-q.x,dy=p.y-q.y,d=Math.sqrt(dx*dx+dy*dy);
-                    if(d<CD){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.strokeStyle=`rgba(232,160,48,${(1-d/CD)*.08})`;ctx.lineWidth=.5;ctx.stroke();}}
+                for(let j=i+1;j<pts.length;j++){
+                    const q=pts[j],dx=p.x-q.x,dy=p.y-q.y,d=Math.sqrt(dx*dx+dy*dy);
+                    if(d<CD){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.strokeStyle=`rgba(232,160,48,${(1-d/CD)*.08})`;ctx.lineWidth=.5;ctx.stroke();}
+                }
                 const mdx=p.x-mx.x,mdy=p.y-my.y,md=Math.sqrt(mdx*mdx+mdy*mdy);
                 if(md<MD){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(mx.x,my.y);ctx.strokeStyle=`rgba(232,160,48,${(1-md/MD)*.2})`;ctx.lineWidth=.6;ctx.stroke();}
             }
