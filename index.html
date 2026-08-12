@@ -1,654 +1,1399 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DropLink — P2P File Transfer</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23e8a030'/%3E%3Cpath d='M16 9v11m0 0l-3.5-3.5M16 20l3.5-3.5' stroke='%2308080f' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
+    <title>DropLink — Peer-to-Peer File Transfer</title>
+    <meta name="description" content="Fast, direct, encrypted peer-to-peer file transfer with no server storage.">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23f59e0b'/%3E%3Cpath d='M16 8v12m0 0l-4-4m4 4l4-4M10 22h12' stroke='%23090a0f' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
+    
+    <!-- External Dependencies -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fffbebeb',
+                            100: '#fef3c7',
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            900: '#78350f',
+                        },
+                        darkbg: '#08090e',
+                        darkcard: '#11131c',
+                        darkborder: 'rgba(255, 255, 255, 0.08)'
+                    },
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;400;600;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
     <style>
         :root {
-            --bg:#08080f;--card:rgba(255,255,255,0.03);--card-h:rgba(255,255,255,0.06);
-            --bdr:rgba(255,255,255,0.07);--bdr-h:rgba(255,255,255,0.14);
-            --txt:#e8e8ec;--dim:#6b6b78;
-            --acc:#e8a030;--acc-h:#f0b848;--acc-g:rgba(232,160,48,0.12);
-            --ok:#34d399;--err:#f87171;
+            --bg-color: #08090e;
+            --card-bg: #11131c;
+            --card-hover: #181a26;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-main: #f3f4f6;
+            --text-dim: #9ca3af;
+            --accent: #f59e0b;
         }
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
-        #bgC{position:fixed;inset:0;z-index:0;pointer-events:none}
-        .bgR{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse at 50% 40%,rgba(232,160,48,0.04) 0%,transparent 60%)}
-        #app{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;align-items:center}
-        header{width:100%;padding:1.5rem 2rem;display:flex;align-items:center;justify-content:space-between}
-        .logo{font-weight:900;font-size:1.4rem;letter-spacing:-0.03em;color:var(--acc)}
-        .logo span{color:var(--txt);font-weight:400}
-        .back-btn{background:none;border:1px solid var(--bdr);color:var(--dim);padding:.4rem 1rem;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.85rem;transition:all .2s;display:none}
-        .back-btn:hover{border-color:var(--bdr-h);color:var(--txt)}
-        .back-btn.vis{display:inline-flex;align-items:center;gap:.4rem}
-        .scr{display:none;flex-direction:column;align-items:center;width:100%;max-width:700px;padding:0 1.5rem 3rem;animation:fu .4s ease}
-        .scr.act{display:flex}
-        @keyframes fu{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 
-        .hero{text-align:center;margin-top:11vh;margin-bottom:3rem}
-        .hero h1{font-size:clamp(2.2rem,5vw,3.4rem);font-weight:900;letter-spacing:-0.04em;line-height:1.1;margin-bottom:1rem}
-        .hero h1 em{font-style:normal;color:var(--acc)}
-        .hero p{color:var(--dim);font-size:1.1rem;font-weight:200;max-width:440px;margin:0 auto}
-        .hc{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;width:100%}
-        .hcd{background:var(--card);border:1px solid var(--bdr);border-radius:16px;padding:2.5rem 1.5rem;text-align:center;cursor:pointer;transition:all .3s;position:relative;overflow:hidden}
-        .hcd::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,var(--acc-g),transparent 70%);opacity:0;transition:opacity .4s}
-        .hcd:hover{border-color:var(--acc);transform:translateY(-4px)}
-        .hcd:hover::before{opacity:1}
-        .hcd i{font-size:2.2rem;color:var(--acc);margin-bottom:1rem;position:relative;z-index:1}
-        .hcd h2{font-size:1.2rem;font-weight:600;margin-bottom:.5rem;position:relative;z-index:1}
-        .hcd p{color:var(--dim);font-size:.88rem;position:relative;z-index:1}
-        .hn{margin-top:3rem;color:var(--dim);font-size:.78rem;text-align:center;opacity:.6}
-
-        .st{font-size:1.5rem;font-weight:800;margin-top:7vh;margin-bottom:1.2rem;letter-spacing:-0.02em}
-        .dz{width:100%;border:2px dashed var(--bdr);border-radius:16px;padding:3rem 2rem;text-align:center;cursor:pointer;transition:all .3s;position:relative;background:var(--card)}
-        .dz:hover,.dz.dov{border-color:var(--acc);background:var(--acc-g)}
-        .dz i{font-size:2.5rem;color:var(--acc);margin-bottom:1rem}
-        .dz p{color:var(--dim);font-size:.95rem}
-        .dz input{position:absolute;inset:0;opacity:0;cursor:pointer}
-        .fl{width:100%;margin-top:1.2rem;display:flex;flex-direction:column;gap:.5rem}
-        .fi{display:flex;align-items:center;gap:.8rem;background:var(--card);border:1px solid var(--bdr);border-radius:10px;padding:.7rem 1rem;font-size:.88rem}
-        .fi i.ic{color:var(--acc);width:20px;text-align:center}
-        .fi .fn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-        .fi .fs{color:var(--dim);white-space:nowrap}
-        .fi .fr{background:none;border:none;color:var(--dim);cursor:pointer;padding:.2rem .4rem;border-radius:4px;transition:color .2s}
-        .fi .fr:hover{color:var(--err)}
-        .bp{margin-top:1.5rem;width:100%;padding:.9rem 1.5rem;background:var(--acc);color:#000;border:none;border-radius:12px;font-family:inherit;font-size:1rem;font-weight:600;cursor:pointer;transition:all .25s}
-        .bp:hover{background:var(--acc-h);transform:translateY(-1px)}
-        .bp:disabled{opacity:.35;cursor:not-allowed;transform:none}
-        .bs{margin-top:.8rem;width:100%;padding:.8rem 1.5rem;background:var(--card);color:var(--txt);border:1px solid var(--bdr);border-radius:12px;font-family:inherit;font-size:.95rem;cursor:pointer;transition:all .25s}
-        .bs:hover{border-color:var(--bdr-h);background:var(--card-h)}
-
-        .cb{margin-top:2rem;text-align:center}
-        .cl{display:block;color:var(--dim);font-size:.85rem;margin-bottom:.8rem}
-        .cd{display:inline-flex;align-items:center;gap:.8rem;background:rgba(232,160,48,0.08);border:1px solid rgba(232,160,48,0.2);border-radius:14px;padding:.8rem 1.5rem}
-        .cc{font-family:'Courier New',monospace;font-size:2.8rem;font-weight:700;letter-spacing:.45em;color:var(--acc);text-indent:.45em}
-        .cpb{background:rgba(232,160,48,0.15);border:none;color:var(--acc);width:42px;height:42px;border-radius:10px;cursor:pointer;font-size:1.1rem;transition:all .2s;display:flex;align-items:center;justify-content:center}
-        .cpb:hover{background:rgba(232,160,48,0.25)}
-        .wm{margin-top:2rem;color:var(--dim);font-size:.95rem;display:flex;align-items:center;gap:.6rem}
-        .dp{display:inline-flex;gap:4px}
-        .dp span{width:6px;height:6px;border-radius:50%;background:var(--acc);animation:dpA 1.4s infinite ease-in-out}
-        .dp span:nth-child(2){animation-delay:.2s}
-        .dp span:nth-child(3){animation-delay:.4s}
-        @keyframes dpA{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1.1)}}
-
-        /* QR Code Styles */
-        .qr-wrap{margin-top:1.5rem;text-align:center}
-        .qr-box{display:inline-block;padding:1rem;background:#fff;border-radius:14px}
-        .qr-box canvas,.qr-box img{display:block;border-radius:8px}
-        .qr-label{color:var(--dim);font-size:.8rem;margin-top:.6rem}
-
-        .ciw{margin-top:1.5rem;text-align:center}
-        .cii{font-family:'Courier New',monospace;font-size:2.8rem;font-weight:700;letter-spacing:.5em;text-indent:.5em;text-align:center;text-transform:uppercase;width:100%;max-width:380px;background:var(--card);border:2px solid var(--bdr);border-radius:14px;padding:.8rem 1rem;color:var(--acc);outline:none;transition:border-color .3s}
-        .cii:focus{border-color:var(--acc)}
-        .cii::placeholder{color:rgba(232,160,48,0.2)}
-
-        /* Receiver icon */
-        .recv-hero{text-align:center;margin-top:5vh;margin-bottom:1.5rem}
-        .recv-icon{width:80px;height:80px;border-radius:22px;background:linear-gradient(135deg,rgba(232,160,48,0.15),rgba(232,160,48,0.05));border:1px solid rgba(232,160,48,0.2);display:inline-flex;align-items:center;justify-content:center;margin-bottom:1rem}
-        .recv-icon i{font-size:2rem;color:var(--acc)}
-
-        /* QR Scanner */
-        .qr-scan-btn{width:100%;max-width:380px;margin:1rem auto 0;padding:.8rem 1.5rem;background:var(--card);color:var(--txt);border:1px solid var(--bdr);border-radius:12px;font-family:inherit;font-size:.95rem;cursor:pointer;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:.5rem}
-        .qr-scan-btn:hover{border-color:var(--acc);background:var(--acc-g)}
-        .qr-scan-btn i{color:var(--acc)}
-        #qrScannerWrap{display:none;position:fixed;inset:0;background:rgba(8,8,15,0.95);z-index:1000;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
-        #qrScannerWrap.active{display:flex}
-        .qr-scanner-box{width:100%;max-width:400px;position:relative}
-        .qr-close{position:absolute;top:-50px;right:0;background:none;border:1px solid var(--bdr);color:var(--dim);padding:.4rem 1rem;border-radius:8px;cursor:pointer;font-family:inherit;transition:all .2s}
-        .qr-close:hover{border-color:var(--err);color:var(--err)}
-        #reader{width:100%;border-radius:16px;overflow:hidden;border:2px solid var(--bdr)}
-
-        .tl{width:100%;margin-top:1rem;display:flex;flex-direction:column;gap:.8rem}
-        .ti{background:var(--card);border:1px solid var(--bdr);border-radius:12px;padding:.9rem 1.1rem}
-        .ti.act{border-color:rgba(232,160,48,0.3)}
-        .ti.don{border-color:rgba(52,211,153,0.3)}
-        .th{display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;flex-wrap:wrap}
-        .th i{color:var(--acc);width:18px;text-align:center;font-size:.9rem}
-        .th .tn{flex:1;font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-        .th .ts{color:var(--dim);font-size:.78rem;white-space:nowrap}
-        .th .tp{color:var(--acc);font-size:.8rem;font-weight:600;min-width:38px;text-align:right}
-        .tb{height:4px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden}
-        .tf{height:100%;background:var(--acc);border-radius:4px;transition:width .15s linear;width:0%}
-        .ti.don .tf{background:var(--ok)}
-        .ti.don .tp{color:var(--ok)}
-        .comp{background:rgba(52,211,153,0.1);color:var(--ok);font-size:.7rem;padding:.15rem .45rem;border-radius:6px;font-weight:600;white-space:nowrap}
-        .nocomp{background:rgba(255,255,255,0.05);color:var(--dim);font-size:.7rem;padding:.15rem .45rem;border-radius:6px;font-weight:600;white-space:nowrap}
-
-        .ob{margin-top:1.5rem;width:100%;background:var(--card);border:1px solid var(--bdr);border-radius:12px;padding:1rem 1.2rem}
-        .ob .ol{display:flex;justify-content:space-between;font-size:.82rem;color:var(--dim);margin-bottom:.5rem}
-        .ob .ol .comp-info{color:var(--ok);font-weight:600;font-size:.78rem}
-        .ob .obr{height:6px;background:rgba(255,255,255,0.06);border-radius:6px;overflow:hidden}
-        .ob .obf{height:100%;background:var(--acc);border-radius:6px;transition:width .15s linear;width:0%}
-        .ob .obs{display:flex;justify-content:space-between;margin-top:.6rem;font-size:.82rem;color:var(--dim)}
-        .ob .obs strong{color:var(--txt);font-weight:600}
-
-        .si{font-size:4rem;color:var(--ok);margin-bottom:1.5rem}
-        .sut{font-size:1.5rem;font-weight:800;margin-bottom:.5rem}
-        .sub{color:var(--dim);margin-bottom:2rem}
-        .rl{width:100%;margin-bottom:1.5rem;display:flex;flex-direction:column;gap:.4rem}
-        .ri{display:flex;align-items:center;gap:.7rem;background:var(--card);border:1px solid var(--bdr);border-radius:10px;padding:.6rem 1rem;font-size:.88rem}
-        .ri i{color:var(--ok)}
-        .ri .rn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-        .ri .rs{color:var(--dim);font-size:.8rem}
-        .ri .rd{background:none;border:none;color:var(--acc);cursor:pointer;font-size:.85rem;padding:.2rem .5rem;border-radius:6px;transition:background .2s}
-        .ri .rd:hover{background:var(--acc-g)}
-
-        .spw{margin-top:3rem;text-align:center}
-        .sp{width:48px;height:48px;border:3px solid var(--bdr);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1.2rem}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        .spw p{color:var(--dim)}
-
-        .prep-wrap{text-align:center;padding:3rem 0}
-        .prep-wrap .sp{margin-bottom:1rem}
-        .prep-wrap p{color:var(--dim);font-size:.95rem}
-        .prep-wrap .prep-detail{color:var(--dim);font-size:.82rem;margin-top:.5rem;opacity:.7}
-
-        #toasts{position:fixed;top:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem}
-        .toast{background:#1a1a24;border:1px solid var(--bdr);border-radius:10px;padding:.7rem 1.2rem;font-size:.88rem;color:var(--txt);animation:tIn .3s ease;min-width:220px;max-width:380px;display:flex;align-items:center;gap:.6rem;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
-        .toast.error{border-color:rgba(248,113,113,0.3)}.toast.error i{color:var(--err)}
-        .toast.success{border-color:rgba(52,211,153,0.3)}.toast.success i{color:var(--ok)}
-        .toast.info i{color:var(--acc)}
-        .toast.out{animation:tOut .3s ease forwards}
-        @keyframes tIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
-        @keyframes tOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(40px)}}
-
-        @media(max-width:560px){
-            .hc{grid-template-columns:1fr}
-            .hero{margin-top:5vh}
-            .cc,.cii{font-size:2rem;letter-spacing:.35em;text-indent:.35em}
-            .th{gap:.4rem}
-            .th .ts{display:none}
-            .recv-icon{width:64px;height:64px;border-radius:18px}
-            .qr-box{padding:.7rem}
+        .light {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --card-hover: #f1f5f9;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --text-main: #0f172a;
+            --text-dim: #64748b;
+            --accent: #d97706;
         }
-        @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .bg-grid {
+            background-image: radial-gradient(rgba(245, 158, 11, 0.08) 1px, transparent 1px);
+            background-size: 28px 28px;
+        }
+
+        .glass-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(12px);
+        }
+
+        .pulse-ring {
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.05); }
+        }
+
+        .code-char {
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.25em;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.3); border-radius: 99px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(156, 163, 175, 0.5); }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
     </style>
-<base target="_blank">
 </head>
-<body>
-    <canvas id="bgC"></canvas>
-    <div class="bgR"></div>
-    <div id="app">
-        <header>
-            <div class="logo">Drop<span>Link</span></div>
-            <button class="back-btn" id="backBtn" onclick="goHome()" aria-label="Go back"><i class="fas fa-arrow-left"></i> Back</button>
-        </header>
+<body class="bg-grid flex flex-col justify-between min-h-screen">
 
-        <!-- HOME -->
-        <section id="homeScr" class="scr act">
-            <div class="hero">
-                <h1>Send files,<br><em>peer to peer</em></h1>
-                <p>No servers, no size limits, no sign-up. Files are compressed before transfer — less upload, original on arrival.</p>
-            </div>
-            <div class="hc">
-                <div class="hcd" onclick="startSend()" tabindex="0" role="button" aria-label="Send files">
-                    <i class="fas fa-arrow-up-from-bracket"></i>
-                    <h2>Send Files</h2>
-                    <p>Pick files, get a short code & QR</p>
-                </div>
-                <div class="hcd" onclick="startRecv()" tabindex="0" role="button" aria-label="Receive files">
-                    <i class="fas fa-qrcode"></i>
-                    <h2>Receive Files</h2>
-                    <p>Scan QR or enter a code</p>
-                </div>
-            </div>
-            <p class="hn"><i class="fas fa-shield-halved"></i> &nbsp;Files never touch any server. Gzip compression reduces your upload. Original files on the other side.</p>
-        </section>
+    <!-- Background Canvas Mesh -->
+    <canvas id="bgCanvas" class="fixed inset-0 pointer-events-none z-0 opacity-40"></canvas>
 
-        <!-- SENDER -->
-        <section id="sendScr" class="scr">
-            <div id="s1">
-                <h2 class="st">Select files to send</h2>
-                <div class="dz" id="dz">
-                    <i class="fas fa-cloud-arrow-up"></i>
-                    <p>Drop files here or click to browse</p>
-                    <input type="file" id="fIn" multiple aria-label="Select files">
+    <div class="relative z-10 flex flex-col min-h-screen">
+        <!-- TOP NAVIGATION -->
+        <header class="w-full max-w-6xl mx-auto px-4 py-5 flex items-center justify-between">
+            <a href="#" onclick="UI.goHome()" class="flex items-center gap-3 group">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-brand-400 flex items-center justify-center text-darkbg shadow-lg shadow-brand-500/20 group-hover:scale-105 transition-transform">
+                    <i class="fas fa-bolt font-black text-lg"></i>
                 </div>
-                <div class="fl" id="sFL"></div>
-                <button class="bp" id="crtBtn" disabled onclick="createLink()">Create Link</button>
-            </div>
-            <div id="s2" style="display:none">
-                <h2 class="st">Share this code</h2>
-                <div class="cb">
-                    <span class="cl">The receiver needs this code</span>
-                    <div class="cd">
-                        <span class="cc" id="sCode">------</span>
-                        <button class="cpb" onclick="copyCode()" aria-label="Copy code"><i class="fas fa-copy"></i></button>
-                    </div>
+                <div class="flex flex-col">
+                    <span class="font-extrabold text-xl tracking-tight leading-none">Drop<span class="text-brand-500">Link</span></span>
+                    <span class="text-[10px] tracking-widest text-gray-400 font-mono uppercase">Direct P2P</span>
                 </div>
-                <div class="qr-wrap">
-                    <div class="qr-box" id="qrBox"></div>
-                    <p class="qr-label">Scan with phone camera or DropLink receiver</p>
-                </div>
-                <div class="wm">Waiting for receiver <span class="dp"><span></span><span></span><span></span></span></div>
-            </div>
-            <div id="s3" style="display:none">
-                <h2 class="st">Sending files</h2>
-                <div id="sPrep" class="prep-wrap" style="display:none">
-                    <div class="sp"></div>
-                    <p id="prepMsg">Compressing files...</p>
-                    <p class="prep-detail" id="prepDetail"></p>
-                </div>
-                <div class="tl" id="sTL"></div>
-                <div class="ob" id="sOB" style="display:none">
-                    <div class="ol">
-                        <span>Overall Upload</span>
-                        <span id="sOPct">0%</span>
-                    </div>
-                    <div class="ol" style="margin-top:-.3rem" id="sCompRow"></div>
-                    <div class="obr"><div class="obf" id="sOFill"></div></div>
-                    <div class="obs">
-                        <span><strong id="sSpd">0 B/s</strong></span>
-                        <span id="sEta">calculating...</span>
-                    </div>
-                </div>
-            </div>
-            <div id="s4" style="display:none;text-align:center">
-                <i class="fas fa-circle-check si"></i>
-                <h2 class="sut">Files sent successfully</h2>
-                <p class="sub" id="sDone"></p>
-                <button class="bp" onclick="goHome()" style="max-width:280px;margin:0 auto">Send More Files</button>
-            </div>
-        </section>
+            </a>
 
-        <!-- RECEIVER -->
-        <section id="recvScr" class="scr">
-            <div id="r1">
-                <div class="recv-hero">
-                    <div class="recv-icon"><i class="fas fa-qrcode"></i></div>
-                    <h2 class="st" style="margin-top:0">Enter the sender's code</h2>
-                </div>
-                <div class="ciw">
-                    <input type="text" class="cii" id="cIn" maxlength="6" placeholder="ABC123" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" aria-label="Enter 6-character code">
-                </div>
-                <button class="bp" id="conBtn" onclick="connectToSender()" style="max-width:380px;margin:1.5rem auto 0">Connect</button>
-                <button class="qr-scan-btn" onclick="openQrScanner()">
-                    <i class="fas fa-camera"></i> Scan QR Code Instead
+            <nav class="hidden md:flex items-center gap-6 text-sm font-medium">
+                <button onclick="UI.showModal('howItWorksModal')" class="hover:text-brand-500 transition-colors">How it works</button>
+                <button onclick="UI.showModal('securityModal')" class="hover:text-brand-500 transition-colors">Security</button>
+                <button onclick="UI.showModal('privacyModal')" class="hover:text-brand-500 transition-colors">Privacy</button>
+            </nav>
+
+            <div class="flex items-center gap-3">
+                <button onclick="Theme.toggle()" aria-label="Toggle Theme" class="p-2.5 rounded-xl glass-panel hover:border-brand-500/50 transition-all text-sm w-10 h-10 flex items-center justify-center">
+                    <i id="themeIcon" class="fas fa-moon text-brand-500"></i>
+                </button>
+                <button onclick="UI.showModal('settingsModal')" aria-label="Settings" class="p-2.5 rounded-xl glass-panel hover:border-brand-500/50 transition-all text-sm w-10 h-10 flex items-center justify-center">
+                    <i class="fas fa-sliders text-gray-400 hover:text-white"></i>
                 </button>
             </div>
-            <div id="r2" style="display:none">
-                <div class="spw"><div class="sp"></div><p>Connecting to sender...</p></div>
-            </div>
-            <div id="r3" style="display:none">
-                <div class="recv-hero" style="margin-top:2vh;margin-bottom:.5rem">
-                    <div class="recv-icon" style="width:56px;height:56px;border-radius:16px"><i class="fas fa-arrow-down" style="font-size:1.4rem"></i></div>
-                </div>
-                <h2 class="st" style="margin-top:0">Receiving files</h2>
-                <div class="tl" id="rTL"></div>
-                <div class="ob" id="rOB" style="display:none">
-                    <div class="ol">
-                        <span>Overall Download</span>
-                        <span id="rOPct">0%</span>
+        </header>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-grow flex items-center justify-center px-4 py-8">
+            <div class="w-full max-w-4xl">
+
+                <!-- SCREEN: LANDING (HOME) -->
+                <section id="scr-landing" class="view-screen active flex flex-col items-center text-center space-y-10">
+                    <div class="space-y-4 max-w-2xl">
+                        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass-panel text-xs font-medium text-brand-500 border-brand-500/20 mb-2">
+                            <span class="w-2 h-2 rounded-full bg-brand-500 animate-ping"></span>
+                            Zero-Cloud Peer-To-Peer File Transfer
+                        </div>
+                        <h1 class="text-4xl md:text-6xl font-black tracking-tight leading-tight">
+                            Send files. <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-amber-600">Directly. Privately.</span>
+                        </h1>
+                        <p class="text-base md:text-lg text-gray-400 font-light">
+                            High-speed end-to-end peer-to-peer file transfer. No server storage, no permanent links, and no file size limits.
+                        </p>
                     </div>
-                    <div class="ol" style="margin-top:-.3rem" id="rCompRow"></div>
-                    <div class="obr"><div class="obf" id="rOFill"></div></div>
-                    <div class="obs">
-                        <span><strong id="rSpd">0 B/s</strong></span>
-                        <span id="rEta">calculating...</span>
+
+                    <!-- ACTION CARDS -->
+                    <div class="grid md:grid-cols-2 gap-6 w-full max-w-2xl">
+                        <!-- SEND CARD -->
+                        <div onclick="UI.goSend()" role="button" tabindex="0" class="glass-panel p-8 rounded-2xl text-left cursor-pointer hover:border-brand-500/60 transition-all group hover:-translate-y-1 relative overflow-hidden">
+                            <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-brand-500/5 rounded-full blur-2xl group-hover:bg-brand-500/15 transition-all"></div>
+                            <div class="w-14 h-14 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-500 mb-6 group-hover:scale-110 transition-transform">
+                                <i class="fas fa-arrow-up-from-bracket text-2xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold mb-2">Send Files</h2>
+                            <p class="text-sm text-gray-400 mb-6">Select files or folders to create a short single-use code & QR code.</p>
+                            <span class="inline-flex items-center gap-2 text-brand-500 font-semibold text-sm group-hover:translate-x-1 transition-transform">
+                                Start Sending <i class="fas fa-arrow-right text-xs"></i>
+                            </span>
+                        </div>
+
+                        <!-- RECEIVE CARD -->
+                        <div onclick="UI.goRecv()" role="button" tabindex="0" class="glass-panel p-8 rounded-2xl text-left cursor-pointer hover:border-brand-500/60 transition-all group hover:-translate-y-1 relative overflow-hidden">
+                            <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-brand-500/5 rounded-full blur-2xl group-hover:bg-brand-500/15 transition-all"></div>
+                            <div class="w-14 h-14 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-500 mb-6 group-hover:scale-110 transition-transform">
+                                <i class="fas fa-qrcode text-2xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold mb-2">Receive Files</h2>
+                            <p class="text-sm text-gray-400 mb-6">Enter a 6-character transfer code or scan QR code with your camera.</p>
+                            <span class="inline-flex items-center gap-2 text-brand-500 font-semibold text-sm group-hover:translate-x-1 transition-transform">
+                                Receive Files <i class="fas fa-arrow-right text-xs"></i>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- SECURITY BADGE FOOTER -->
+                    <div class="flex items-center gap-6 text-xs text-gray-500 pt-4">
+                        <span class="flex items-center gap-2"><i class="fas fa-shield-halved text-brand-500"></i> Encrypted WebRTC</span>
+                        <span class="flex items-center gap-2"><i class="fas fa-bolt text-brand-500"></i> Smart Compression</span>
+                        <span class="flex items-center gap-2"><i class="fas fa-trash-can text-brand-500"></i> Single-Use Code</span>
+                    </div>
+                </section>
+
+                <!-- SCREEN: SENDER FILE SELECTION & PREPARATION -->
+                <section id="scr-send" class="view-screen hidden flex-col items-center space-y-6 w-full max-w-2xl mx-auto">
+                    <div class="flex items-center justify-between w-full">
+                        <button onclick="UI.goHome()" class="text-xs font-semibold text-gray-400 hover:text-white flex items-center gap-2">
+                            <i class="fas fa-arrow-left"></i> Back to Home
+                        </button>
+                        <span class="text-xs font-mono text-brand-500 uppercase tracking-widest">Step 1 of 2</span>
+                    </div>
+
+                    <div class="w-full glass-panel p-8 rounded-3xl space-y-6">
+                        <h2 class="text-2xl font-bold text-center">Select files to transfer</h2>
+
+                        <!-- DRAG & DROP ZONE -->
+                        <div id="dropZone" class="border-2 border-dashed border-gray-700 hover:border-brand-500 rounded-2xl p-8 text-center cursor-pointer transition-all bg-black/20 hover:bg-brand-500/5 group relative">
+                            <input type="file" id="fileInput" multiple class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
+                            <div class="w-16 h-16 rounded-full bg-brand-500/10 text-brand-500 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                                <i class="fas fa-cloud-arrow-up text-2xl"></i>
+                            </div>
+                            <p class="font-medium text-lg mb-1">Drag and drop files here</p>
+                            <p class="text-xs text-gray-400 mb-4">or click to browse your computer or mobile device</p>
+
+                            <div class="flex items-center justify-center gap-3">
+                                <label for="folderInput" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs font-medium cursor-pointer text-gray-300 transition-colors z-20" onclick="event.stopPropagation()">
+                                    <i class="fas fa-folder text-brand-500"></i> Add Folder
+                                    <input type="file" id="folderInput" webkitdirectory directory multiple class="hidden">
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- SELECTED FILES QUEUE LIST -->
+                        <div id="fileQueueWrapper" class="hidden space-y-3">
+                            <div class="flex items-center justify-between text-xs font-medium text-gray-400 px-1">
+                                <span>Selected Files (<span id="fileCountText">0</span>)</span>
+                                <span id="fileTotalSizeText">0 MB</span>
+                            </div>
+
+                            <div id="fileQueue" class="max-h-56 overflow-y-auto space-y-2 pr-1">
+                                <!-- File Items Injected via JS -->
+                            </div>
+
+                            <!-- COMPRESSION SUMMARY BANNER -->
+                            <div id="compressionSummary" class="p-3 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-between text-xs text-brand-500 font-medium">
+                                <span class="flex items-center gap-2"><i class="fas fa-bolt"></i> <span id="compRatioText">Smart Compression Ready</span></span>
+                                <span id="compSavingsText" class="font-mono">--</span>
+                            </div>
+                        </div>
+
+                        <!-- CUSTOM CODE INPUT TOGGLE -->
+                        <div class="pt-2 border-t border-gray-800 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-medium text-gray-400">Code Preference</span>
+                                <button type="button" onclick="UI.toggleCustomCode()" id="btnCustomToggle" class="text-xs text-brand-500 font-semibold hover:underline">Use Custom Code</button>
+                            </div>
+
+                            <div id="customCodeInputWrap" class="hidden">
+                                <input type="text" id="customCodeInput" maxlength="6" placeholder="Custom 6-CHAR code (e.g. SHARE1)" class="w-full bg-black/40 border border-gray-700 rounded-xl px-4 py-2.5 text-center font-mono text-brand-500 uppercase tracking-widest focus:border-brand-500 outline-none text-sm">
+                                <p class="text-[11px] text-gray-500 mt-1">Must be 6 unambiguous alphanumeric characters.</p>
+                            </div>
+                        </div>
+
+                        <button id="btnCreateLink" disabled onclick="Transfer.initiateSender()" class="w-full py-4 rounded-xl bg-brand-500 hover:bg-brand-400 text-darkbg font-bold text-base transition-all shadow-lg shadow-brand-500/20 disabled:opacity-40 disabled:cursor-not-allowed">
+                            Generate Transfer Link
+                        </button>
+                    </div>
+                </section>
+
+                <!-- SCREEN: SENDER CODE & QR DISPLAY -->
+                <section id="scr-code" class="view-screen hidden flex-col items-center space-y-6 w-full max-w-lg mx-auto text-center">
+                    <div class="glass-panel p-8 rounded-3xl space-y-6 w-full">
+                        <div class="space-y-1">
+                            <span class="text-xs font-mono text-brand-500 uppercase tracking-widest">Ready to Transfer</span>
+                            <h2 class="text-2xl font-bold">Share this transfer code</h2>
+                        </div>
+
+                        <!-- BIG CODE BOX -->
+                        <div class="p-6 rounded-2xl bg-black/40 border border-brand-500/30 flex flex-col items-center justify-center space-y-2">
+                            <div id="displayCode" class="text-4xl md:text-5xl font-black code-char text-brand-500 tracking-widest">------</div>
+                            <div class="flex items-center gap-2 text-xs text-gray-400">
+                                <i class="fas fa-clock text-brand-500"></i> Expires in <span id="codeTimer" class="font-mono font-bold text-white">10:00</span>
+                            </div>
+                        </div>
+
+                        <!-- QR CODE DISPLAY CONTAINER -->
+                        <div class="flex flex-col items-center space-y-3">
+                            <div id="qrCodeContainer" class="p-4 bg-white rounded-2xl shadow-xl inline-block"></div>
+                            <p class="text-xs text-gray-400">Scan code with mobile camera or DropLink receiver</p>
+                        </div>
+
+                        <!-- ACTION BUTTONS -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <button onclick="UI.copyCode()" class="py-3 px-4 rounded-xl glass-panel hover:bg-gray-800 text-xs font-semibold flex items-center justify-center gap-2">
+                                <i class="fas fa-copy text-brand-500"></i> Copy Code
+                            </button>
+                            <button onclick="UI.shareTransfer()" class="py-3 px-4 rounded-xl glass-panel hover:bg-gray-800 text-xs font-semibold flex items-center justify-center gap-2">
+                                <i class="fas fa-share-nodes text-brand-500"></i> Share
+                            </button>
+                        </div>
+
+                        <div class="pt-4 border-t border-gray-800 flex items-center justify-center gap-3 text-xs text-gray-400">
+                            <span class="w-2.5 h-2.5 rounded-full bg-brand-500 animate-ping"></span>
+                            Waiting for receiver to connect...
+                        </div>
+
+                        <button onclick="Transfer.cancel()" class="w-full py-2.5 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs font-semibold transition-colors">
+                            Cancel Transfer
+                        </button>
+                    </div>
+                </section>
+
+                <!-- SCREEN: RECEIVER CODE INPUT -->
+                <section id="scr-recv" class="view-screen hidden flex-col items-center space-y-6 w-full max-w-lg mx-auto">
+                    <div class="flex items-center justify-start w-full">
+                        <button onclick="UI.goHome()" class="text-xs font-semibold text-gray-400 hover:text-white flex items-center gap-2">
+                            <i class="fas fa-arrow-left"></i> Back to Home
+                        </button>
+                    </div>
+
+                    <div class="glass-panel p-8 rounded-3xl space-y-6 w-full text-center">
+                        <div class="w-16 h-16 rounded-2xl bg-brand-500/10 border border-brand-500/20 text-brand-500 flex items-center justify-center mx-auto">
+                            <i class="fas fa-key text-2xl"></i>
+                        </div>
+
+                        <div>
+                            <h2 class="text-2xl font-bold">Enter Transfer Code</h2>
+                            <p class="text-xs text-gray-400 mt-1">Enter the 6-character code provided by the sender</p>
+                        </div>
+
+                        <div class="space-y-4">
+                            <input type="text" id="codeInput" maxlength="6" autocomplete="off" spellcheck="false" placeholder="ABC123" class="w-full py-4 text-center text-3xl font-bold font-mono tracking-widest uppercase bg-black/40 border-2 border-gray-700 rounded-2xl text-brand-500 focus:border-brand-500 outline-none transition-all">
+
+                            <button onclick="Transfer.connectAsReceiver()" class="w-full py-4 rounded-xl bg-brand-500 hover:bg-brand-400 text-darkbg font-bold text-base transition-all shadow-lg shadow-brand-500/20">
+                                Connect & Download
+                            </button>
+
+                            <div class="relative flex py-2 items-center">
+                                <div class="flex-grow border-t border-gray-800"></div>
+                                <span class="flex-shrink mx-4 text-xs text-gray-500 uppercase">Or</span>
+                                <div class="flex-grow border-t border-gray-800"></div>
+                            </div>
+
+                            <button onclick="QRScanner.open()" class="w-full py-3 rounded-xl glass-panel hover:bg-gray-800 text-sm font-semibold flex items-center justify-center gap-2">
+                                <i class="fas fa-camera text-brand-500"></i> Scan QR Code with Camera
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- MODAL / SCREEN: RECEIVER CONFIRMATION MODAL -->
+                <div id="confirmModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+                    <div class="glass-panel p-8 rounded-3xl max-w-md w-full space-y-6 text-center animate-in fade-in zoom-in duration-200">
+                        <div class="w-16 h-16 rounded-full bg-brand-500/10 text-brand-500 flex items-center justify-center mx-auto">
+                            <i class="fas fa-shield-cat text-3xl"></i>
+                        </div>
+
+                        <div>
+                            <span class="text-xs font-mono text-brand-500 uppercase tracking-widest">Incoming Transfer Request</span>
+                            <h3 class="text-2xl font-bold mt-1">Accept files from peer?</h3>
+                        </div>
+
+                        <div class="bg-black/40 border border-gray-800 p-4 rounded-2xl text-left space-y-2 text-xs">
+                            <div class="flex justify-between text-gray-400">
+                                <span>Sender Device:</span>
+                                <strong id="confSenderDevice" class="text-white font-mono">Chrome on macOS</strong>
+                            </div>
+                            <div class="flex justify-between text-gray-400">
+                                <span>Files Count:</span>
+                                <strong id="confFileCount" class="text-white">3 files</strong>
+                            </div>
+                            <div class="flex justify-between text-gray-400">
+                                <span>Total Size:</span>
+                                <strong id="confTotalSize" class="text-white">124.5 MB</strong>
+                            </div>
+                            <div class="pt-2 border-t border-gray-800">
+                                <span class="text-gray-500 block mb-1">Contents:</span>
+                                <ul id="confFileList" class="max-h-28 overflow-y-auto space-y-1 font-mono text-[11px] text-gray-300">
+                                    <!-- File preview items -->
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <button onclick="Transfer.declineTransfer()" class="py-3 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs font-bold transition-colors">
+                                Decline
+                            </button>
+                            <button onclick="Transfer.acceptTransfer()" class="py-3 rounded-xl bg-brand-500 hover:bg-brand-400 text-darkbg text-xs font-bold transition-all shadow-lg shadow-brand-500/20">
+                                Accept & Receive
+                            </button>
+                        </div>
                     </div>
                 </div>
+
+                <!-- SCREEN: LIVE TRANSFER DASHBOARD -->
+                <section id="scr-transfer" class="view-screen hidden flex-col items-center space-y-6 w-full max-w-2xl mx-auto">
+                    <div class="glass-panel p-8 rounded-3xl space-y-8 w-full">
+
+                        <!-- HEADER STATS -->
+                        <div class="flex items-center justify-between border-b border-gray-800 pb-6">
+                            <div>
+                                <span id="transferRoleBadge" class="text-xs font-mono text-brand-500 uppercase tracking-widest">SENDING FILES</span>
+                                <h2 id="transferStatusTitle" class="text-2xl font-bold">Transferring...</h2>
+                            </div>
+                            <div class="text-right">
+                                <span id="connTypeBadge" class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Direct P2P
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- OVERALL PROGRESS BAR & PERCENTAGE -->
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-baseline">
+                                <span class="text-4xl font-black font-mono text-brand-500" id="overallPercent">0%</span>
+                                <div class="text-right font-mono text-xs text-gray-400 space-x-3">
+                                    <span><i class="fas fa-gauge-high text-brand-500"></i> <strong id="transferSpeed" class="text-white">0 KB/s</strong></span>
+                                    <span><i class="fas fa-hourglass-half text-brand-500"></i> ETA: <strong id="transferETA" class="text-white">--</strong></span>
+                                </div>
+                            </div>
+
+                            <div class="w-full h-4 bg-black/50 rounded-full overflow-hidden border border-gray-800 p-0.5">
+                                <div id="overallProgressBar" class="h-full bg-gradient-to-r from-brand-600 to-brand-400 rounded-full transition-all duration-200 w-0"></div>
+                            </div>
+
+                            <div class="flex justify-between text-xs text-gray-400 font-mono">
+                                <span id="transferredBytesText">0 MB / 0 MB</span>
+                                <span id="compressionSavingsBadge" class="text-brand-500"></span>
+                            </div>
+                        </div>
+
+                        <!-- PER-FILE TRANSFER LIST -->
+                        <div class="space-y-3">
+                            <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">File Progress</h3>
+                            <div id="transferFileList" class="max-h-60 overflow-y-auto space-y-2 pr-1">
+                                <!-- File Progress Cards dynamically generated -->
+                            </div>
+                        </div>
+
+                        <button onclick="Transfer.cancel()" class="w-full py-3 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs font-semibold transition-colors">
+                            Cancel Transfer
+                        </button>
+                    </div>
+                </section>
+
+                <!-- SCREEN: COMPLETION SUMMARY -->
+                <section id="scr-complete" class="view-screen hidden flex-col items-center space-y-6 w-full max-w-lg mx-auto text-center">
+                    <div class="glass-panel p-8 rounded-3xl space-y-6 w-full">
+                        <div class="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto text-3xl animate-bounce">
+                            <i class="fas fa-check"></i>
+                        </div>
+
+                        <div>
+                            <h2 class="text-3xl font-black">Transfer Complete!</h2>
+                            <p id="completeSummaryText" class="text-sm text-gray-400 mt-1">Transferred 3 files (124 MB) in 12s</p>
+                        </div>
+
+                        <!-- RECEIVER FILE DOWNLOAD QUEUE -->
+                        <div id="recvCompletedListWrap" class="hidden space-y-3 text-left">
+                            <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Received Files</h3>
+                            <div id="recvCompletedList" class="max-h-48 overflow-y-auto space-y-2">
+                                <!-- Download items -->
+                            </div>
+
+                            <button id="btnDownloadAllZip" onclick="Transfer.downloadAllZip()" class="w-full py-3 rounded-xl bg-brand-500 hover:bg-brand-400 text-darkbg font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20">
+                                <i class="fas fa-file-zipper"></i> Download All as ZIP
+                            </button>
+                        </div>
+
+                        <!-- CODE DESTRUCTION NOTICE -->
+                        <div class="p-3 rounded-xl bg-black/40 border border-gray-800 text-xs text-gray-400 flex items-center justify-center gap-2">
+                            <i class="fas fa-lock text-brand-500"></i> Transfer code destroyed & WebRTC session closed
+                        </div>
+
+                        <button onclick="UI.goHome()" class="w-full py-3 rounded-xl glass-panel hover:bg-gray-800 text-sm font-semibold">
+                            Back to Home
+                        </button>
+                    </div>
+                </section>
+
             </div>
-            <div id="r4" style="display:none;text-align:center">
-                <div class="recv-icon" style="width:72px;height:72px;border-radius:20px;margin-bottom:1rem;display:inline-flex;align-items:center;justify-content:center;background:rgba(52,211,153,0.1);border-color:rgba(52,211,153,0.2)">
-                    <i class="fas fa-check" style="font-size:1.8rem;color:var(--ok)"></i>
-                </div>
-                <h2 class="sut">Files received</h2>
-                <p class="sub" id="rDone"></p>
-                <div class="rl" id="rFL"></div>
-                <button class="bp" id="dlZip" onclick="dlAllZip()" style="max-width:380px;margin:0 auto"><i class="fas fa-file-zipper"></i> &nbsp;Download All as ZIP</button>
-                <button class="bs" onclick="goHome()" style="max-width:380px;margin:0 auto">Receive More Files</button>
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="w-full max-w-6xl mx-auto px-4 py-6 flex flex-col md:flex-row items-center justify-between text-xs text-gray-500 border-t border-gray-800/50 gap-4">
+            <div class="flex items-center gap-2">
+                <span>DropLink P2P &copy; 2026</span>
+                <span>•</span>
+                <span>Direct Browser Transfer</span>
             </div>
-        </section>
+            <div class="flex items-center gap-6">
+                <button onclick="UI.showModal('privacyModal')" class="hover:text-gray-300">Privacy Policy</button>
+                <button onclick="UI.showModal('securityModal')" class="hover:text-gray-300">Security Specs</button>
+            </div>
+        </footer>
     </div>
 
-    <!-- QR Scanner Overlay -->
-    <div id="qrScannerWrap">
-        <div class="qr-scanner-box">
-            <button class="qr-close" onclick="closeQrScanner()"><i class="fas fa-xmark"></i> Close</button>
-            <div id="reader"></div>
+    <!-- QR CAMERA SCANNER OVERLAY MODAL -->
+    <div id="qrScannerModal" class="fixed inset-0 bg-black/90 z-50 hidden flex flex-col items-center justify-center p-4">
+        <div class="w-full max-w-md glass-panel p-6 rounded-3xl relative flex flex-col items-center">
+            <button onclick="QRScanner.close()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-lg">
+                <i class="fas fa-xmark"></i>
+            </button>
+            <h3 class="text-lg font-bold mb-4">Scan DropLink QR Code</h3>
+            <div id="reader" class="w-full rounded-2xl overflow-hidden border border-gray-700 bg-black"></div>
+            <p class="text-xs text-gray-400 mt-4 text-center">Center the QR code inside the frame to scan automatically.</p>
         </div>
     </div>
 
-    <div id="toasts"></div>
+    <!-- MODAL: HOW IT WORKS -->
+    <div id="howItWorksModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-3xl max-w-lg w-full space-y-6 relative">
+            <button onclick="UI.closeModal('howItWorksModal')" class="absolute top-6 right-6 text-gray-400 hover:text-white">
+                <i class="fas fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-2xl font-bold">How DropLink Works</h3>
+            <div class="space-y-4 text-xs text-gray-300 leading-relaxed">
+                <div class="flex gap-4">
+                    <div class="w-8 h-8 rounded-full bg-brand-500/10 text-brand-500 font-bold flex items-center justify-center flex-shrink-0">1</div>
+                    <div>
+                        <h4 class="font-bold text-sm text-white mb-0.5">Select Files</h4>
+                        <p class="text-gray-400">Choose files or folders. Smart compression compresses code and document files automatically before transfer.</p>
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <div class="w-8 h-8 rounded-full bg-brand-500/10 text-brand-500 font-bold flex items-center justify-center flex-shrink-0">2</div>
+                    <div>
+                        <h4 class="font-bold text-sm text-white mb-0.5">Share 6-Character Code</h4>
+                        <p class="text-gray-400">DropLink generates a secure 10-minute temporary transfer code and QR code.</p>
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <div class="w-8 h-8 rounded-full bg-brand-500/10 text-brand-500 font-bold flex items-center justify-center flex-shrink-0">3</div>
+                    <div>
+                        <h4 class="font-bold text-sm text-white mb-0.5">Direct P2P Stream</h4>
+                        <p class="text-gray-400">Files are chunked, SHA-256 hashed, and streamed directly from browser to browser via encrypted WebRTC DataChannels.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- MODAL: SECURITY -->
+    <div id="securityModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-3xl max-w-lg w-full space-y-6 relative">
+            <button onclick="UI.closeModal('securityModal')" class="absolute top-6 right-6 text-gray-400 hover:text-white">
+                <i class="fas fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-2xl font-bold">Security Architecture</h3>
+            <div class="space-y-3 text-xs text-gray-300 leading-relaxed">
+                <p>DropLink utilizes standard WebRTC technology with DTLS/SRTP encryption built into modern browsers.</p>
+                <div class="p-3 rounded-xl bg-black/40 border border-gray-800">
+                    <strong class="text-white block mb-1">Signaling vs Data:</strong>
+                    DropLink signaling servers coordinate initial IP negotiation. File payload data flows directly between peers and is never saved or stored on any server.
+                </div>
+                <div class="p-3 rounded-xl bg-black/40 border border-gray-800">
+                    <strong class="text-white block mb-1">SHA-256 Integrity Verification:</strong>
+                    Every file transferred has its cryptographic SHA-256 hash computed before and verified after transfer.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: PRIVACY -->
+    <div id="privacyModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-3xl max-w-lg w-full space-y-6 relative">
+            <button onclick="UI.closeModal('privacyModal')" class="absolute top-6 right-6 text-gray-400 hover:text-white">
+                <i class="fas fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-2xl font-bold">Privacy Policy</h3>
+            <p class="text-xs text-gray-300 leading-relaxed">
+                DropLink does not track users, log file transfers, or upload files to central server storage. Connections expire immediately upon transfer completion or cancellation.
+            </p>
+        </div>
+    </div>
+
+    <!-- MODAL: SETTINGS -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-3xl max-w-md w-full space-y-6 relative">
+            <button onclick="UI.closeModal('settingsModal')" class="absolute top-6 right-6 text-gray-400 hover:text-white">
+                <i class="fas fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-xl font-bold">Preferences</h3>
+            <div class="space-y-4 text-xs">
+                <div class="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-gray-800">
+                    <div>
+                        <span class="font-bold text-white block">Sound Effects</span>
+                        <span class="text-gray-500">Play subtle audio chimes on completion</span>
+                    </div>
+                    <input type="checkbox" id="settingSound" checked onchange="SoundFX.enabled = this.checked" class="accent-brand-500 w-4 h-4">
+                </div>
+                <div class="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-gray-800">
+                    <div>
+                        <span class="font-bold text-white block">Auto-Download Files</span>
+                        <span class="text-gray-500">Automatically trigger browser download</span>
+                    </div>
+                    <input type="checkbox" id="settingAutoDL" checked class="accent-brand-500 w-4 h-4">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- APPLICATION JAVASCRIPT ENGINE -->
     <script>
-    if(typeof Peer==='undefined'){document.getElementById('app').innerHTML='<div style="text-align:center;padding:4rem 2rem;color:var(--err)"><i class="fas fa-triangle-exclamation" style="font-size:3rem;margin-bottom:1rem;display:block"></i><h2 style="margin-bottom:.5rem">Failed to load PeerJS</h2><p style="color:var(--dim)">Check your internet and refresh.</p></div>';throw new Error('PeerJS missing');}
+    /**
+     * DropLink Complete Application Engine
+     * P2P WebRTC Transfer, Smart Compression, Crypto SHA-256 Verification & UI State Manager
+     */
 
-    const CHUNK=16384;
-    let peer=null,conn=null,selFiles=[],sCode='',recvFiles=[];
-    let T={active:false,totalBytes:0,doneBytes:0,origTotal:0,fs:[],t0:0,lb:0,lt:0,spd:0,iv:null};
-    let qrScanner=null;
+    // --- UTILITIES ---
+    const Utils = {
+        CHUNK_SIZE: 32768, // 32KB chunk for reliable RTCDataChannel performance
+        UNAMBIGUOUS_CHARS: '34679ACDEFGHJKLMNPQRTUVWXY',
 
-    /* --- Screens --- */
-    function showScr(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));document.getElementById(id).classList.add('act');document.getElementById('backBtn').classList.toggle('vis',id!=='homeScr');}
-    function sStep(n){for(let i=1;i<=4;i++)document.getElementById('s'+i).style.display=i===n?'':'none';}
-    function rStep(n){for(let i=1;i<=4;i++)document.getElementById('r'+i).style.display=i===n?'':'none';}
-    function goHome(){cleanup();selFiles=[];recvFiles=[];document.getElementById('sFL').innerHTML='';document.getElementById('fIn').value='';document.getElementById('crtBtn').disabled=true;document.getElementById('cIn').value='';clearQr();sStep(1);rStep(1);showScr('homeScr');}
-    function cleanup(){if(T.iv){clearInterval(T.iv);T.iv=null;}T.active=false;if(conn){try{conn.close();}catch(e){}conn=null;}if(peer){try{peer.destroy();}catch(e){}peer=null;}closeQrScanner();}
-    function startSend(){showScr('sendScr');sStep(1);}
-    function startRecv(){showScr('recvScr');rStep(1);setTimeout(()=>document.getElementById('cIn').focus(),100);}
+        genCode() {
+            const bytes = new Uint8Array(6);
+            crypto.getRandomValues(bytes);
+            return Array.from(bytes).map(b => this.UNAMBIGUOUS_CHARS[b % this.UNAMBIGUOUS_CHARS.length]).join('');
+        },
 
-    /* --- QR Code --- */
-    function showQr(code){
-        const box=document.getElementById('qrBox');
-        box.innerHTML='';
-        // Generate QR with the code and a droplink:// URL scheme for app deep-linking
-        const qrData='droplink://'+code;
-        new QRCode(box,{
-            text:qrData,
-            width:180,
-            height:180,
-            colorDark:'#08080f',
-            colorLight:'#ffffff',
-            correctLevel:QRCode.CorrectLevel.M
-        });
-    }
-    function clearQr(){document.getElementById('qrBox').innerHTML='';}
+        fmtSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        },
 
-    /* --- QR Scanner --- */
-    function openQrScanner(){
-        const wrap=document.getElementById('qrScannerWrap');
-        wrap.classList.add('active');
-        if(!qrScanner){
-            qrScanner=new Html5Qrcode('reader');
+        fmtSpeed(bytesPerSec) {
+            return this.fmtSize(bytesPerSec) + '/s';
+        },
+
+        fmtTime(seconds) {
+            if (!isFinite(seconds) || seconds < 0) return '--';
+            if (seconds < 60) return Math.ceil(seconds) + 's';
+            const m = Math.floor(seconds / 60);
+            const s = Math.ceil(seconds % 60);
+            return `${m}m ${s}s`;
+        },
+
+        async computeSHA256(arrayBuffer) {
+            const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        },
+
+        getDeviceInfo() {
+            const ua = navigator.userAgent;
+            let os = 'Unknown OS';
+            if (ua.includes('Mac')) os = 'macOS';
+            else if (ua.includes('Win')) os = 'Windows';
+            else if (ua.includes('Linux')) os = 'Linux';
+            else if (ua.includes('Android')) os = 'Android';
+            else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+
+            let browser = 'Browser';
+            if (ua.includes('Chrome')) browser = 'Chrome';
+            else if (ua.includes('Safari')) browser = 'Safari';
+            else if (ua.includes('Firefox')) browser = 'Firefox';
+            else if (ua.includes('Edg')) browser = 'Edge';
+
+            return `${browser} on ${os}`;
+        },
+
+        getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const map = {
+                pdf: 'fa-file-pdf text-red-400',
+                doc: 'fa-file-word text-blue-400', docx: 'fa-file-word text-blue-400',
+                xls: 'fa-file-excel text-emerald-400', xlsx: 'fa-file-excel text-emerald-400',
+                jpg: 'fa-file-image text-purple-400', jpeg: 'fa-file-image text-purple-400', png: 'fa-file-image text-purple-400', gif: 'fa-file-image text-purple-400', webp: 'fa-file-image text-purple-400',
+                mp4: 'fa-file-video text-pink-400', mov: 'fa-file-video text-pink-400', mkv: 'fa-file-video text-pink-400',
+                zip: 'fa-file-zipper text-amber-400', rar: 'fa-file-zipper text-amber-400', '7z': 'fa-file-zipper text-amber-400',
+                js: 'fa-file-code text-yellow-400', ts: 'fa-file-code text-blue-400', html: 'fa-file-code text-orange-400', css: 'fa-file-code text-indigo-400', json: 'fa-file-code text-amber-300'
+            };
+            return map[ext] || 'fa-file text-gray-400';
         }
-        qrScanner.start(
-            {facingMode:'environment'},
-            {fps:10,qrbox:{width:250,height:250}},
-            (decodedText)=>{
-                // Try to extract 6-char code from various formats
-                let code='';
-                const match=decodedText.match(/([A-Z0-9]{6})/);
-                if(match)code=match[1];
-                else if(decodedText.length===6&&/^[A-Z0-9]+$/.test(decodedText.toUpperCase()))code=decodedText.toUpperCase();
-                if(code){
-                    closeQrScanner();
-                    document.getElementById('cIn').value=code;
-                    showToast('QR scanned: '+code,'success');
-                    setTimeout(()=>connectToSender(),300);
-                }else{
-                    showToast('Invalid QR code','error');
-                }
-            },
-            (err)=>{/* ignore scan errors */}
-        ).catch(e=>{
-            showToast('Camera error: '+e.message,'error');
-            closeQrScanner();
-        });
-    }
-    function closeQrScanner(){
-        const wrap=document.getElementById('qrScannerWrap');
-        wrap.classList.remove('active');
-        if(qrScanner){
-            qrScanner.stop().catch(()=>{});
-        }
-    }
+    };
 
-    /* --- File Selection --- */
-    const dz=document.getElementById('dz'),fIn=document.getElementById('fIn');
-    dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dov');});
-    dz.addEventListener('dragleave',()=>dz.classList.remove('dov'));
-    dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dov');addF(e.dataTransfer.files);});
-    fIn.addEventListener('change',()=>{addF(fIn.files);fIn.value='';});
-    function addF(fl){for(const f of fl)selFiles.push(f);renderFL();}
-    function rmF(i){selFiles.splice(i,1);renderFL();}
-    function renderFL(){const el=document.getElementById('sFL');el.innerHTML=selFiles.map((f,i)=>`<div class="fi"><i class="fas ${fIcon(f.name)} ic"></i><span class="fn" title="${f.name}">${f.name}</span><span class="fs">${fmtS(f.size)}</span><button class="fr" onclick="rmF(${i})" aria-label="Remove"><i class="fas fa-xmark"></i></button></div>`).join('');document.getElementById('crtBtn').disabled=!selFiles.length;}
+    // --- SYNTHESIZER AUDIO FEEDBACK ---
+    const SoundFX = {
+        enabled: true,
+        ctx: null,
 
-    /* --- Create Link --- */
-    async function createLink(){
-        const btn=document.getElementById('crtBtn');btn.disabled=true;btn.textContent='Creating link...';
-        try{
-            sCode=genCode();peer=new Peer('dl-'+sCode,{debug:0});
-            await new Promise((res,rej)=>{peer.on('open',res);peer.on('error',rej);});
-            document.getElementById('sCode').textContent=sCode;
-            showQr(sCode);
-            sStep(2);
-            peer.on('connection',onConn);
-            peer.on('error',err=>{if(err.type==='unavailable-id'){showToast('Code collision, retrying...','info');cleanup();createLink();}else showToast('Error: '+err.message,'error');});
-        }catch(e){showToast('Failed to create link. Check connection.','error');btn.disabled=false;btn.textContent='Create Link';}
-    }
-    function onConn(c){
-        conn=c;
-        conn.on('open',()=>{showToast('Receiver connected!','success');beginSend();});
-        conn.on('close',()=>{if(T.active)showToast('Receiver disconnected','error');});
-        conn.on('error',err=>showToast('Error: '+err.message,'error'));
-    }
-
-    /* --- Compression --- */
-    async function prepFile(file){
-        const r={name:file.name,origSize:file.size,sendSize:file.size,compressed:false,data:null,file};
-        if(file.size>0 && file.size<=500*1024*1024 && typeof CompressionStream!=='undefined'){
-            try{
-                const cs=new CompressionStream('gzip');
-                const stream=file.stream().pipeThrough(cs);
-                const buf=await new Response(stream).arrayBuffer();
-                if(buf.byteLength<file.size*0.98){r.compressed=true;r.sendSize=buf.byteLength;r.data=new Uint8Array(buf);}
-            }catch(e){}
-        }
-        return r;
-    }
-
-    /* --- Sender Transfer --- */
-    async function beginSend(){
-        sStep(3);
-        document.getElementById('sPrep').style.display='';
-        document.getElementById('sTL').innerHTML='';
-        document.getElementById('sOB').style.display='none';
-
-        T.fs=[];T.totalBytes=0;T.origTotal=0;T.doneBytes=0;T.active=false;
-        for(let i=0;i<selFiles.length;i++){
-            document.getElementById('prepMsg').textContent=`Compressing file ${i+1} of ${selFiles.length}...`;
-            document.getElementById('prepDetail').textContent=selFiles[i].name;
-            const p=await prepFile(selFiles[i]);
-            p.done=0;p.totalChunks=Math.ceil(p.sendSize/CHUNK);p.chunks=[];
-            T.fs.push(p);T.totalBytes+=p.sendSize;T.origTotal+=p.origSize;
-        }
-        document.getElementById('sPrep').style.display='none';
-        document.getElementById('sOB').style.display='';
-
-        T.active=true;T.t0=Date.now();T.lb=0;T.lt=Date.now();
-        renderSendProg();startSpd('send');
-
-        conn.send({type:'file-list',files:T.fs.map(f=>({name:f.name,origSize:f.origSize,sendSize:f.sendSize,compressed:f.compressed}))});
-        await slp(200);
-
-        for(let i=0;i<T.fs.length;i++){if(!conn||!conn.open)break;await sendFile(i);}
-        if(conn&&conn.open)conn.send({type:'all-done'});
-        finishXfer('send');
-    }
-    async function sendFile(idx){
-        const f=T.fs[idx];
-        conn.send({type:'file-start',index:idx,name:f.name,origSize:f.origSize,sendSize:f.sendSize,compressed:f.compressed,totalChunks:f.totalChunks});
-        for(let ci=0;ci<f.totalChunks;ci++){
-            if(!conn||!conn.open)return;
-            const s=ci*CHUNK,e=Math.min(s+CHUNK,f.sendSize);
-            let chunk;
-            if(f.data){chunk=f.data.slice(s,e);}else{chunk=new Uint8Array(await f.file.slice(s,e).arrayBuffer());}
-            conn.send({type:'chunk',index:idx,chunkIndex:ci,data:chunk});
-            f.done=e;T.doneBytes=T.fs.reduce((a,x)=>a+x.done,0);
-            if(ci%50===0){renderSendProg();await slp(0);}
-        }
-        f.data=null;f.file=null;
-        conn.send({type:'file-end',index:idx});
-        f.done=f.sendSize;T.doneBytes=T.fs.reduce((a,x)=>a+x.done,0);renderSendProg();
-    }
-    function renderSendProg(){
-        document.getElementById('sTL').innerHTML=T.fs.map((f,i)=>{
-            const pct=f.sendSize>0?Math.round(f.done/f.sendSize*100):0;
-            const cls=pct>=100?'don':f.done>0?'act':'';
-            const badge=f.compressed?`<span class="comp">${Math.round((1-f.sendSize/f.origSize)*100)}% smaller</span>`:'<span class="nocomp">raw</span>';
-            return`<div class="ti ${cls}"><div class="th"><i class="fas ${fIcon(f.name)}"></i><span class="tn" title="${f.name}">${f.name}</span>${badge}<span class="ts">${fmtS(f.sendSize)}${f.compressed?' / '+fmtS(f.origSize):''}</span><span class="tp">${pct}%</span></div><div class="tb"><div class="tf" style="width:${pct}%"></div></div></div>`;
-        }).join('');
-        const op=T.totalBytes>0?Math.round(T.doneBytes/T.totalBytes*100):0;
-        document.getElementById('sOPct').textContent=op+'%';
-        document.getElementById('sOFill').style.width=op+'%';
-        if(T.origTotal>T.totalBytes){
-            document.getElementById('sCompRow').innerHTML=`<span class="comp-info"><i class="fas fa-bolt"></i> Uploading ${fmtS(T.totalBytes)} instead of ${fmtS(T.origTotal)} — ${Math.round((1-T.totalBytes/T.origTotal)*100)}% less data</span>`;
-        }else{document.getElementById('sCompRow').innerHTML='';}
-    }
-
-    /* --- Receiver Connect --- */
-    function connectToSender(){
-        const raw=document.getElementById('cIn').value.trim().toUpperCase();
-        if(raw.length!==6||!/^[A-Z0-9]{6}$/.test(raw)){showToast('Enter a valid 6-character code','error');return;}
-        rStep(2);peer=new Peer(undefined,{debug:0});
-        peer.on('open',()=>{
-            conn=peer.connect('dl-'+raw,{reliable:true});
-            conn.on('open',()=>{showToast('Connected!','success');setupRecv();});
-            conn.on('close',()=>{if(T.active)showToast('Sender disconnected','error');});
-            conn.on('error',err=>showToast('Error: '+err.message,'error'));
-            setTimeout(()=>{if(conn&&!conn.open){showToast('Could not connect. Check the code.','error');rStep(1);cleanup();}},15000);
-        });
-        peer.on('error',err=>{
-            if(err.type==='peer-unavailable'){showToast('Code not found. Ensure the sender has created the link.','error');}else{showToast('Error: '+err.message,'error');}
-            rStep(1);cleanup();
-        });
-    }
-
-    /* --- Receiver Handlers --- */
-    function setupRecv(){
-        conn.on('data',async d=>{
-            if(d.type==='file-list'){
-                T.totalBytes=d.files.reduce((a,f)=>a+f.sendSize,0);
-                T.origTotal=d.files.reduce((a,f)=>a+f.origSize,0);
-                T.fs=d.files.map(f=>({name:f.name,origSize:f.origSize,sendSize:f.sendSize,done:0,totalChunks:Math.ceil(f.sendSize/CHUNK),compressed:f.compressed,chunks:[]}));
-                recvFiles=d.files.map(f=>({name:f.name,size:f.origSize,blob:null}));
-                T.active=true;T.t0=Date.now();T.lb=0;T.lt=Date.now();T.doneBytes=0;
-                rStep(3);renderRecvProg();startSpd('recv');
-            }else if(d.type==='file-start'){
-                // just metadata, nothing to do
-            }else if(d.type==='chunk'){
-                const fs=T.fs[d.index];if(!fs)return;
-                fs.chunks[d.chunkIndex]=d.data;
-                fs.done=Math.min((d.chunkIndex+1)*CHUNK,fs.sendSize);
-                T.doneBytes=T.fs.reduce((a,f)=>a+f.done,0);
-                if(d.chunkIndex%100===0||d.chunkIndex===fs.totalChunks-1){renderRecvProg();await slp(0);}
-            }else if(d.type==='file-end'){
-                const fs=T.fs[d.index];if(!fs)return;
-                fs.done=fs.sendSize;
-                if(fs.compressed){
-                    try{
-                        const cb=new Blob(fs.chunks);
-                        const ds=new DecompressionStream('gzip');
-                        const stream=cb.stream().pipeThrough(ds);
-                        const buf=await new Response(stream).arrayBuffer();
-                        recvFiles[d.index].blob=new Blob([buf]);
-                    }catch(e){showToast('Decompression failed for '+fs.name,'error');recvFiles[d.index].blob=new Blob(fs.chunks);}
-                }else{recvFiles[d.index].blob=new Blob(fs.chunks);}
-                fs.chunks=[];T.doneBytes=T.fs.reduce((a,f)=>a+f.done,0);renderRecvProg();
-            }else if(d.type==='all-done'){finishXfer('recv');}
-        });
-    }
-    function renderRecvProg(){
-        document.getElementById('rTL').innerHTML=T.fs.map((f,i)=>{
-            const pct=f.sendSize>0?Math.round(f.done/f.sendSize*100):0;
-            const cls=pct>=100?'don':f.done>0?'act':'';
-            const badge=f.compressed?`<span class="comp">${Math.round((1-f.sendSize/f.origSize)*100)}% smaller</span>`:'<span class="nocomp">raw</span>';
-            return`<div class="ti ${cls}"><div class="th"><i class="fas ${fIcon(f.name)}"></i><span class="tn" title="${f.name}">${f.name}</span>${badge}<span class="ts">${fmtS(f.sendSize)}${f.compressed?' → '+fmtS(f.origSize):''}</span><span class="tp">${pct}%</span></div><div class="tb"><div class="tf" style="width:${pct}%"></div></div></div>`;
-        }).join('');
-        const op=T.totalBytes>0?Math.round(T.doneBytes/T.totalBytes*100):0;
-        document.getElementById('rOPct').textContent=op+'%';
-        document.getElementById('rOFill').style.width=op+'%';
-        if(T.origTotal>T.totalBytes){
-            document.getElementById('rCompRow').innerHTML=`<span class="comp-info"><i class="fas fa-bolt"></i> Downloading ${fmtS(T.totalBytes)} — expands to ${fmtS(T.origTotal)} original</span>`;
-        }else{document.getElementById('rCompRow').innerHTML='';}
-    }
-
-    /* --- Speed Tracker --- */
-    function startSpd(side){
-        T.lb=0;T.lt=Date.now();T.spd=0;
-        if(T.iv)clearInterval(T.iv);
-        T.iv=setInterval(()=>{
-            const now=Date.now(),el=(now-T.lt)/1000;
-            if(el>=.5){T.spd=(T.doneBytes-T.lb)/el;T.lb=T.doneBytes;T.lt=now;}
-            const rem=T.totalBytes-T.doneBytes,eta=T.spd>0?rem/T.spd:Infinity;
-            if(side==='send'){document.getElementById('sSpd').textContent=fmtSpd(T.spd);document.getElementById('sEta').textContent=T.doneBytes>=T.totalBytes?'Complete':'~ '+fmtT(eta);}
-            else{document.getElementById('rSpd').textContent=fmtSpd(T.spd);document.getElementById('rEta').textContent=T.doneBytes>=T.totalBytes?'Complete':'~ '+fmtT(eta);}
-        },500);
-    }
-    function finishXfer(side){
-        T.active=false;if(T.iv){clearInterval(T.iv);T.iv=null;}
-        const el=(Date.now()-T.t0)/1000,avg=el>0?T.totalBytes/el:0;
-        if(side==='send'){
-            let info=`${selFiles.length} file${selFiles.length>1?'s':''} sent in ${fmtT(el)} — avg ${fmtSpd(avg)}`;
-            if(T.origTotal>T.totalBytes)info+=`<br>Uploaded only ${fmtS(T.totalBytes)} of ${fmtS(T.origTotal)} (${Math.round((1-T.totalBytes/T.origTotal)*100)}% saved by compression)`;
-            document.getElementById('sDone').innerHTML=info;sStep(4);
-        }else{
-            let info=`${recvFiles.length} file${recvFiles.length>1?'s':''} (${fmtS(T.origTotal)} original) received in ${fmtT(el)}`;
-            if(T.origTotal>T.totalBytes)info+=`<br>Only ${fmtS(T.totalBytes)} downloaded — ${Math.round((1-T.totalBytes/T.origTotal)*100)}% less data over the network`;
-            document.getElementById('rDone').innerHTML=info;
-            renderRecvFL();rStep(4);
-            if(typeof JSZip==='undefined')document.getElementById('dlZip').style.display='none';
-        }
-    }
-
-    /* --- Download --- */
-    function renderRecvFL(){
-        document.getElementById('rFL').innerHTML=recvFiles.map((f,i)=>`<div class="ri"><i class="fas ${fIcon(f.name)}"></i><span class="rn" title="${f.name}">${f.name}</span><span class="rs">${fmtS(f.size)}</span><button class="rd" onclick="dlOne(${i})" aria-label="Download ${f.name}"><i class="fas fa-download"></i></button></div>`).join('');
-    }
-    function dlOne(i){const f=recvFiles[i];if(!f||!f.blob)return;const a=document.createElement('a');a.href=URL.createObjectURL(f.blob);a.download=f.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
-    async function dlAllZip(){
-        if(typeof JSZip==='undefined'){showToast('ZIP library not loaded','error');return;}
-        const btn=document.getElementById('dlZip');btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> &nbsp;Creating ZIP...';
-        try{const zip=new JSZip();const nc={};
-            for(const f of recvFiles){let n=f.name;if(nc[n]!==undefined){nc[n]++;n=n.replace(/(\.[^.]+)$/,' ('+nc[n]+')$1');}else nc[n]=0;zip.file(n,f.blob);}
-            const blob=await zip.generateAsync({type:'blob'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='droplink-files.zip';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
-        }catch(e){showToast('Failed to create ZIP','error');}
-        btn.disabled=false;btn.innerHTML='<i class="fas fa-file-zipper"></i> &nbsp;Download All as ZIP';
-    }
-
-    /* --- Code Input --- */
-    document.getElementById('cIn').addEventListener('input',function(){this.value=this.value.replace(/[^a-zA-Z0-9]/g,'').toUpperCase().slice(0,6);});
-    document.getElementById('cIn').addEventListener('keydown',function(e){if(e.key==='Enter')connectToSender();});
-    document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeQrScanner();goHome();}});
-    document.querySelectorAll('.hcd').forEach(c=>c.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();c.click();}}));
-
-    function copyCode(){navigator.clipboard.writeText(sCode).then(()=>showToast('Code copied!','success')).catch(()=>{const t=document.createElement('textarea');t.value=sCode;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);showToast('Code copied!','success');});}
-
-    /* --- Helpers --- */
-    function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let r='';for(let i=0;i<6;i++)r+=c[Math.floor(Math.random()*c.length)];return r;}
-    function fmtS(b){if(b===0)return'0 B';const u=['B','KB','MB','GB','TB'];const i=Math.floor(Math.log(b)/Math.log(1024));return(b/Math.pow(1024,i)).toFixed(i>0?1:0)+' '+u[i];}
-    function fmtSpd(b){if(b<=0)return'0 B/s';const u=['B/s','KB/s','MB/s','GB/s'];const i=Math.floor(Math.log(b)/Math.log(1024));return(b/Math.pow(1024,i)).toFixed(1)+' '+u[i];}
-    function fmtT(s){if(!isFinite(s)||s<0)return'--';if(s<60)return Math.ceil(s)+'s';const m=Math.floor(s/60),sec=Math.ceil(s%60);return m+'m '+sec+'s';}
-    function slp(ms){return new Promise(r=>setTimeout(r,ms));}
-    function fIcon(n){const x=n.split('.').pop().toLowerCase(),m={pdf:'fa-file-pdf',doc:'fa-file-word',docx:'fa-file-word',xls:'fa-file-excel',xlsx:'fa-file-excel',csv:'fa-file-csv',ppt:'fa-file-powerpoint',pptx:'fa-file-powerpoint',jpg:'fa-file-image',jpeg:'fa-file-image',png:'fa-file-image',gif:'fa-file-image',svg:'fa-file-image',webp:'fa-file-image',bmp:'fa-file-image',mp4:'fa-file-video',mov:'fa-file-video',avi:'fa-file-video',mkv:'fa-file-video',webm:'fa-file-video',mp3:'fa-file-audio',wav:'fa-file-audio',ogg:'fa-file-audio',flac:'fa-file-audio',aac:'fa-file-audio',m4a:'fa-file-audio',zip:'fa-file-zipper',rar:'fa-file-zipper','7z':'fa-file-zipper',tar:'fa-file-zipper',gz:'fa-file-zipper',js:'fa-file-code',ts:'fa-file-code',html:'fa-file-code',css:'fa-file-code',py:'fa-file-code',java:'fa-file-code',cpp:'fa-file-code',json:'fa-file-code',xml:'fa-file-code',sql:'fa-file-code',txt:'fa-file-lines',md:'fa-file-lines',log:'fa-file-lines',exe:'fa-file',dmg:'fa-file',iso:'fa-file'};return m[x]||'fa-file';}
-
-    /* --- Toast --- */
-    function showToast(msg,type='info'){const ic={info:'fa-circle-info',success:'fa-circle-check',error:'fa-circle-exclamation'};const t=document.createElement('div');t.className='toast '+type;t.innerHTML=`<i class="fas ${ic[type]||ic.info}"></i><span>${msg}</span>`;document.getElementById('toasts').appendChild(t);setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),300);},3500);}
-
-    /* --- Background --- */
-    (function(){
-        const c=document.getElementById('bgC'),ctx=c.getContext('2d');let W,H,pts=[],mx={x:-1e3,y:-1e3};const N=50,CD=140,MD=180;
-        function rs(){W=c.width=innerWidth;H=c.height=innerHeight;}rs();addEventListener('resize',rs);
-        document.addEventListener('mousemove',e=>{mx.x=e.clientX;mx.y=e.clientY;});
-        for(let i=0;i<N;i++)pts.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,r:Math.random()*1.5+.5,hl:Math.random()<.12});
-        function draw(){
-            ctx.clearRect(0,0,W,H);
-            for(let i=0;i<pts.length;i++){
-                const p=pts[i];p.x+=p.vx;p.y+=p.vy;
-                if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;
-                ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-                ctx.fillStyle=p.hl?'rgba(232,160,48,0.5)':'rgba(255,255,255,0.15)';ctx.fill();
-                for(let j=i+1;j<pts.length;j++){const q=pts[j],dx=p.x-q.x,dy=p.y-q.y,d=Math.sqrt(dx*dx+dy*dy);
-                    if(d<CD){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.strokeStyle=`rgba(232,160,48,${(1-d/CD)*.08})`;ctx.lineWidth=.5;ctx.stroke();}}
-                const mdx=p.x-mx.x,mdy=p.y-my.y,md=Math.sqrt(mdx*mdx+mdy*mdy);
-                if(md<MD){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(mx.x,my.y);ctx.strokeStyle=`rgba(232,160,48,${(1-md/MD)*.2})`;ctx.lineWidth=.6;ctx.stroke();}
+        init() {
+            if (!this.ctx && typeof AudioContext !== 'undefined') {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
             }
-            requestAnimationFrame(draw);
+        },
+
+        playTone(freq, type, duration) {
+            if (!this.enabled) return;
+            try {
+                this.init();
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            } catch(e) {}
+        },
+
+        playSuccess() {
+            this.playTone(523.25, 'sine', 0.15); // C5
+            setTimeout(() => this.playTone(659.25, 'sine', 0.3), 120); // E5
+        },
+
+        playError() {
+            this.playTone(220, 'sawtooth', 0.25);
         }
-        if(!matchMedia('(prefers-reduced-motion:reduce)').matches)draw();
-        else{for(const p of pts){ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=p.hl?'rgba(232,160,48,0.5)':'rgba(255,255,255,0.15)';ctx.fill();}}
-    })();
+    };
+
+    // --- THEME MANAGER ---
+    const Theme = {
+        init() {
+            const saved = localStorage.getItem('dl_theme') || 'dark';
+            if (saved === 'light') document.documentElement.classList.remove('dark'), document.documentElement.classList.add('light');
+            this.updateIcon();
+        },
+        toggle() {
+            const isDark = document.documentElement.classList.contains('dark');
+            if (isDark) {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+                localStorage.setItem('dl_theme', 'light');
+            } else {
+                document.documentElement.classList.remove('light');
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('dl_theme', 'dark');
+            }
+            this.updateIcon();
+        },
+        updateIcon() {
+            const icon = document.getElementById('themeIcon');
+            if (icon) {
+                icon.className = document.documentElement.classList.contains('dark') ? 'fas fa-moon text-brand-500' : 'fas fa-sun text-brand-500';
+            }
+        }
+    };
+
+    // --- SMART COMPRESSION MANAGER ---
+    const SmartCompressor = {
+        NON_COMPRESSIBLE_EXTS: new Set(['jpg','jpeg','png','webp','gif','mp4','mov','mkv','avi','mp3','flac','zip','rar','7z','gz','pdf','apk','dmg','iso']),
+
+        isCompressible(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (this.NON_COMPRESSIBLE_EXTS.has(ext)) return false;
+            if (file.size < 512 || file.size > 200 * 1024 * 1024) return false; // Limit gzip overhead to <= 200MB files
+            return true;
+        },
+
+        async compressFile(file) {
+            if (!this.isCompressible(file) || typeof CompressionStream === 'undefined') {
+                const buffer = await file.arrayBuffer();
+                const sha256 = await Utils.computeSHA256(buffer);
+                return { compressed: false, data: new Uint8Array(buffer), sendSize: file.size, origSize: file.size, sha256 };
+            }
+            try {
+                const cs = new CompressionStream('gzip');
+                const stream = file.stream().pipeThrough(cs);
+                const compressedBuf = await new Response(stream).arrayBuffer();
+                if (compressedBuf.byteLength < file.size * 0.95) {
+                    const sha256 = await Utils.computeSHA256(compressedBuf);
+                    return { compressed: true, data: new Uint8Array(compressedBuf), sendSize: compressedBuf.byteLength, origSize: file.size, sha256 };
+                }
+            } catch(e) {}
+            const buffer = await file.arrayBuffer();
+            const sha256 = await Utils.computeSHA256(buffer);
+            return { compressed: false, data: new Uint8Array(buffer), sendSize: file.size, origSize: file.size, sha256 };
+        },
+
+        async decompress(uint8Array) {
+            if (typeof DecompressionStream === 'undefined') return uint8Array.buffer;
+            const ds = new DecompressionStream('gzip');
+            const blob = new Blob([uint8Array]);
+            const stream = blob.stream().pipeThrough(ds);
+            return await new Response(stream).arrayBuffer();
+        }
+    };
+
+    // --- UI MANAGER ---
+    const UI = {
+        currentScreen: 'scr-landing',
+        selectedFiles: [],
+
+        showToast(msg, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const icons = { info: 'fa-circle-info text-brand-500', success: 'fa-circle-check text-emerald-400', error: 'fa-triangle-exclamation text-red-400' };
+            toast.className = 'glass-panel px-4 py-3 rounded-2xl shadow-2xl text-xs flex items-center gap-3 border border-gray-700 pointer-events-auto animate-in slide-in-from-top duration-300';
+            toast.innerHTML = `<i class="fas ${icons[type] || icons.info} text-base"></i><span>${msg}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'transition-opacity');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        },
+
+        switchScreen(id) {
+            document.querySelectorAll('.view-screen').forEach(s => s.classList.add('hidden'));
+            const el = document.getElementById(id);
+            if (el) el.classList.remove('hidden');
+            this.currentScreen = id;
+        },
+
+        goHome() {
+            Transfer.cleanup();
+            this.selectedFiles = [];
+            document.getElementById('fileQueueWrapper').classList.add('hidden');
+            document.getElementById('fileQueue').innerHTML = '';
+            document.getElementById('btnCreateLink').disabled = true;
+            document.getElementById('codeInput').value = '';
+            this.switchScreen('scr-landing');
+        },
+
+        goSend() {
+            this.switchScreen('scr-send');
+        },
+
+        goRecv() {
+            this.switchScreen('scr-recv');
+            setTimeout(() => document.getElementById('codeInput').focus(), 150);
+        },
+
+        toggleCustomCode() {
+            const wrap = document.getElementById('customCodeInputWrap');
+            const btn = document.getElementById('btnCustomToggle');
+            if (wrap.classList.contains('hidden')) {
+                wrap.classList.remove('hidden');
+                btn.textContent = 'Use Random Code';
+            } else {
+                wrap.classList.add('hidden');
+                btn.textContent = 'Use Custom Code';
+            }
+        },
+
+        renderFileQueue() {
+            const queue = document.getElementById('fileQueue');
+            const countText = document.getElementById('fileCountText');
+            const sizeText = document.getElementById('fileTotalSizeText');
+            const wrapper = document.getElementById('fileQueueWrapper');
+
+            if (this.selectedFiles.length === 0) {
+                wrapper.classList.add('hidden');
+                document.getElementById('btnCreateLink').disabled = true;
+                return;
+            }
+
+            wrapper.classList.remove('hidden');
+            document.getElementById('btnCreateLink').disabled = false;
+
+            let totalBytes = 0;
+            let compressibleCount = 0;
+
+            queue.innerHTML = this.selectedFiles.map((file, idx) => {
+                totalBytes += file.size;
+                if (SmartCompressor.isCompressible(file)) compressibleCount++;
+                return `
+                <div class="flex items-center justify-between p-2.5 rounded-xl bg-black/30 border border-gray-800 text-xs">
+                    <div class="flex items-center gap-2.5 overflow-hidden pr-2">
+                        <i class="fas ${Utils.getFileIcon(file.name)} text-base"></i>
+                        <span class="truncate font-medium">${file.name}</span>
+                    </div>
+                    <div class="flex items-center gap-3 flex-shrink-0">
+                        <span class="font-mono text-gray-400">${Utils.fmtSize(file.size)}</span>
+                        <button onclick="UI.removeFile(${idx})" class="text-gray-500 hover:text-red-400 p-1"><i class="fas fa-xmark"></i></button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            countText.textContent = this.selectedFiles.length;
+            sizeText.textContent = Utils.fmtSize(totalBytes);
+            document.getElementById('compSavingsText').textContent = compressibleCount > 0 ? `${compressibleCount} files compressible` : 'Pre-optimized';
+        },
+
+        removeFile(idx) {
+            this.selectedFiles.splice(idx, 1);
+            this.renderFileQueue();
+        },
+
+        copyCode() {
+            const code = document.getElementById('displayCode').textContent;
+            navigator.clipboard.writeText(code).then(() => UI.showToast('Code copied to clipboard!', 'success'));
+        },
+
+        shareTransfer() {
+            const code = document.getElementById('displayCode').textContent;
+            if (navigator.share) {
+                navigator.share({ title: 'DropLink Transfer', text: `Receive files on DropLink using transfer code: ${code}` });
+            } else {
+                this.copyCode();
+            }
+        },
+
+        showModal(id) { document.getElementById(id).classList.remove('hidden'); },
+        closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+    };
+
+    // --- QR SCANNER MANAGER ---
+    const QRScanner = {
+        html5Qrcode: null,
+
+        open() {
+            document.getElementById('qrScannerModal').classList.remove('hidden');
+            if (!this.html5Qrcode) this.html5Qrcode = new Html5Qrcode("reader");
+
+            this.html5Qrcode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: 220 },
+                (decodedText) => {
+                    const match = decodedText.match(/([34679ACDEFGHJKLMNPQRTUVWXY]{6})/i);
+                    const code = match ? match[1].toUpperCase() : (decodedText.length === 6 ? decodedText.toUpperCase() : null);
+                    if (code) {
+                        document.getElementById('codeInput').value = code;
+                        this.close();
+                        UI.showToast(`Scanned Code: ${code}`, 'success');
+                        Transfer.connectAsReceiver();
+                    }
+                },
+                () => {}
+            ).catch(err => {
+                UI.showToast('Camera access permission denied', 'error');
+                this.close();
+            });
+        },
+
+        close() {
+            document.getElementById('qrScannerModal').classList.add('hidden');
+            if (this.html5Qrcode) this.html5Qrcode.stop().catch(() => {});
+        }
+    };
+
+    // --- P2P TRANSFER CONTROLLER ---
+    const Transfer = {
+        peer: null,
+        conn: null,
+        role: null, // 'sender' or 'receiver'
+        code: '',
+        timerIv: null,
+        transferFiles: [],
+        receivedFiles: [],
+        stats: { totalBytes: 0, transferredBytes: 0, startTime: 0, lastBytes: 0, lastTime: 0 },
+
+        cleanup() {
+            if (this.timerIv) clearInterval(this.timerIv);
+            if (this.conn) { try { this.conn.close(); } catch(e){} this.conn = null; }
+            if (this.peer) { try { this.peer.destroy(); } catch(e){} this.peer = null; }
+            this.transferFiles = [];
+            this.receivedFiles = [];
+        },
+
+        cancel() {
+            this.cleanup();
+            UI.showToast('Transfer cancelled', 'info');
+            UI.goHome();
+        },
+
+        async initiateSender() {
+            const customInput = document.getElementById('customCodeInput').value.trim().toUpperCase();
+            const useCustom = !document.getElementById('customCodeInputWrap').classList.contains('hidden') && customInput.length === 6;
+
+            this.code = useCustom ? customInput : Utils.genCode();
+            this.role = 'sender';
+
+            UI.switchScreen('scr-code');
+            document.getElementById('displayCode').textContent = this.code;
+
+            // Render QR Code
+            const qrBox = document.getElementById('qrCodeContainer');
+            qrBox.innerHTML = '';
+            new QRCode(qrBox, { text: `droplink://${this.code}`, width: 160, height: 160, colorDark: "#08090e", colorLight: "#ffffff" });
+
+            // Start 10 min expiry timer
+            let secondsLeft = 600;
+            if (this.timerIv) clearInterval(this.timerIv);
+            this.timerIv = setInterval(() => {
+                secondsLeft--;
+                const m = Math.floor(secondsLeft / 60);
+                const s = secondsLeft % 60;
+                document.getElementById('codeTimer').textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                if (secondsLeft <= 0) {
+                    clearInterval(this.timerIv);
+                    UI.showToast('Transfer code expired', 'error');
+                    Transfer.cancel();
+                }
+            }, 1000);
+
+            // Initialize PeerJS
+            this.peer = new Peer(`dl-${this.code}`, { debug: 0 });
+
+            this.peer.on('open', () => {
+                // Sender code is registered on PeerJS signalling server
+            });
+
+            this.peer.on('connection', (c) => {
+                this.conn = c;
+                this.setupConnectionHandlers();
+            });
+
+            this.peer.on('error', (err) => {
+                if (err.type === 'unavailable-id') {
+                    UI.showToast('Code already active. Please pick another code.', 'error');
+                } else {
+                    UI.showToast(`Peer error: ${err.message}`, 'error');
+                }
+                UI.goSend();
+            });
+        },
+
+        connectAsReceiver() {
+            const code = document.getElementById('codeInput').value.trim().toUpperCase();
+            if (code.length !== 6) {
+                UI.showToast('Enter a valid 6-character transfer code', 'error');
+                return;
+            }
+
+            this.code = code;
+            this.role = 'receiver';
+            this.peer = new Peer(undefined, { debug: 0 });
+
+            this.peer.on('open', () => {
+                this.conn = this.peer.connect(`dl-${this.code}`, { reliable: true });
+                this.setupConnectionHandlers();
+            });
+
+            this.peer.on('error', (err) => {
+                UI.showToast('Transfer code not found or expired', 'error');
+                UI.goRecv();
+            });
+        },
+
+        setupConnectionHandlers() {
+            this.conn.on('open', () => {
+                if (this.role === 'sender') {
+                    // Send offer proposal to receiver
+                    const filesMeta = UI.selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type }));
+                    this.conn.send({
+                        type: 'offer-proposal',
+                        senderDevice: Utils.getDeviceInfo(),
+                        files: filesMeta,
+                        totalSize: UI.selectedFiles.reduce((a, b) => a + b.size, 0)
+                    });
+                }
+            });
+
+            this.conn.on('data', async (data) => {
+                if (data.type === 'offer-proposal' && this.role === 'receiver') {
+                    // Show confirmation modal to receiver
+                    document.getElementById('confSenderDevice').textContent = data.senderDevice;
+                    document.getElementById('confFileCount').textContent = `${data.files.length} file(s)`;
+                    document.getElementById('confTotalSize').textContent = Utils.fmtSize(data.totalSize);
+                    document.getElementById('confFileList').innerHTML = data.files.map(f => `<li>${f.name} (${Utils.fmtSize(f.size)})</li>`).join('');
+
+                    this.transferFiles = data.files;
+                    UI.showModal('confirmModal');
+                } else if (data.type === 'accept-proposal' && this.role === 'sender') {
+                    // Receiver accepted, compress and send payload!
+                    this.startSendingPayload();
+                } else if (data.type === 'decline-proposal' && this.role === 'sender') {
+                    UI.showToast('Receiver declined the transfer request', 'error');
+                    Transfer.cancel();
+                } else if (data.type === 'start-transfer-meta' && this.role === 'receiver') {
+                    this.transferFiles = data.files;
+                    this.stats.totalBytes = data.totalSendSize;
+                    this.stats.startTime = Date.now();
+                    this.stats.lastTime = Date.now();
+                    this.stats.transferredBytes = 0;
+                    this.receivedFiles = new Array(data.files.length).fill(null).map(() => ({ chunks: [], doneBytes: 0 }));
+
+                    UI.switchScreen('scr-transfer');
+                    this.renderTransferUI('RECEIVING FILES');
+                } else if (data.type === 'chunk' && this.role === 'receiver') {
+                    this.handleIncomingChunk(data);
+                } else if (data.type === 'file-complete' && this.role === 'receiver') {
+                    this.finalizeReceivedFile(data.index);
+                } else if (data.type === 'all-complete' && this.role === 'receiver') {
+                    this.completeTransfer();
+                }
+            });
+
+            this.conn.on('close', () => {
+                UI.showToast('P2P Connection closed', 'info');
+            });
+        },
+
+        acceptTransfer() {
+            UI.closeModal('confirmModal');
+            this.conn.send({ type: 'accept-proposal' });
+            UI.switchScreen('scr-transfer');
+            this.renderTransferUI('RECEIVING FILES');
+        },
+
+        declineTransfer() {
+            UI.closeModal('confirmModal');
+            if (this.conn) this.conn.send({ type: 'decline-proposal' });
+            Transfer.cancel();
+        },
+
+        async startSendingPayload() {
+            UI.switchScreen('scr-transfer');
+            this.renderTransferUI('SENDING FILES');
+
+            UI.showToast('Compressing and preparing files...', 'info');
+
+            // Compress files
+            const preparedFiles = [];
+            let totalSendSize = 0;
+
+            for (let i = 0; i < UI.selectedFiles.length; i++) {
+                const prep = await SmartCompressor.compressFile(UI.selectedFiles[i]);
+                preparedFiles.push({
+                    index: i,
+                    name: UI.selectedFiles[i].name,
+                    origSize: prep.origSize,
+                    sendSize: prep.sendSize,
+                    compressed: prep.compressed,
+                    sha256: prep.sha256,
+                    data: prep.data
+                });
+                totalSendSize += prep.sendSize;
+            }
+
+            this.transferFiles = preparedFiles;
+            this.stats.totalBytes = totalSendSize;
+            this.stats.startTime = Date.now();
+            this.stats.lastTime = Date.now();
+            this.stats.transferredBytes = 0;
+
+            // Meta payload
+            this.conn.send({
+                type: 'start-transfer-meta',
+                totalSendSize: totalSendSize,
+                files: preparedFiles.map(f => ({ index: f.index, name: f.name, origSize: f.origSize, sendSize: f.sendSize, compressed: f.compressed, sha256: f.sha256 }))
+            });
+
+            // Stream Chunks with Backpressure
+            for (let i = 0; i < preparedFiles.length; i++) {
+                const file = preparedFiles[i];
+                const totalChunks = Math.ceil(file.sendSize / Utils.CHUNK_SIZE);
+
+                for (let c = 0; c < totalChunks; c++) {
+                    if (!this.conn || !this.conn.open) return;
+
+                    // WebRTC DataChannel backpressure management
+                    while (this.conn.dataChannel && this.conn.dataChannel.bufferedAmount > 65536) {
+                        await new Promise(r => setTimeout(r, 10));
+                    }
+
+                    const start = c * Utils.CHUNK_SIZE;
+                    const end = Math.min(start + Utils.CHUNK_SIZE, file.sendSize);
+                    const chunkData = file.data.subarray(start, end);
+
+                    this.conn.send({
+                        type: 'chunk',
+                        fileIndex: i,
+                        chunkIndex: c,
+                        data: chunkData
+                    });
+
+                    this.stats.transferredBytes += chunkData.byteLength;
+                    this.updateProgressUI(i, end, file.sendSize);
+                }
+
+                this.conn.send({ type: 'file-complete', index: i });
+            }
+
+            this.conn.send({ type: 'all-complete' });
+            this.completeTransfer();
+        },
+
+        async handleIncomingChunk(d) {
+            const fileMeta = this.transferFiles[d.fileIndex];
+            const target = this.receivedFiles[d.fileIndex];
+
+            target.chunks[d.chunkIndex] = d.data;
+            target.doneBytes += d.data.byteLength;
+            this.stats.transferredBytes += d.data.byteLength;
+
+            this.updateProgressUI(d.fileIndex, target.doneBytes, fileMeta.sendSize);
+        },
+
+        async finalizeReceivedFile(index) {
+            const meta = this.transferFiles[index];
+            const target = this.receivedFiles[index];
+
+            // Reconstruct array buffer
+            const blob = new Blob(target.chunks);
+            const arrayBuffer = await blob.arrayBuffer();
+
+            // SHA-256 verification
+            const hash = await Utils.computeSHA256(arrayBuffer);
+            const verified = (hash === meta.sha256);
+
+            let finalBuffer = arrayBuffer;
+            if (meta.compressed) {
+                finalBuffer = await SmartCompressor.decompress(new Uint8Array(arrayBuffer));
+            }
+
+            target.finalBlob = new Blob([finalBuffer]);
+            target.verified = verified;
+
+            const badge = document.getElementById(`hashBadge-${index}`);
+            if (badge) {
+                badge.innerHTML = verified ? '<span class="text-emerald-400"><i class="fas fa-circle-check"></i> SHA-256 Verified</span>' : '<span class="text-red-400"><i class="fas fa-triangle-exclamation"></i> Hash Mismatch</span>';
+            }
+        },
+
+        renderTransferUI(title) {
+            document.getElementById('transferRoleBadge').textContent = title;
+            const container = document.getElementById('transferFileList');
+
+            container.innerHTML = this.transferFiles.map((f, i) => `
+                <div class="p-3 rounded-xl bg-black/40 border border-gray-800 space-y-2 text-xs">
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium truncate max-w-xs flex items-center gap-2"><i class="fas ${Utils.getFileIcon(f.name)}"></i> ${f.name}</span>
+                        <span id="filePct-${i}" class="font-mono text-brand-500 font-bold">0%</span>
+                    </div>
+                    <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                        <div id="fileBar-${i}" class="h-full bg-brand-500 w-0 transition-all duration-150"></div>
+                    </div>
+                    <div class="flex justify-between text-[11px] text-gray-500">
+                        <span>${Utils.fmtSize(f.origSize)} ${f.compressed ? '(compressed)' : ''}</span>
+                        <span id="hashBadge-${i}">Hashing...</span>
+                    </div>
+                </div>
+            `).join('');
+        },
+
+        updateProgressUI(fileIndex, fileDone, fileTotal) {
+            const pct = Math.min(100, Math.round((fileDone / fileTotal) * 100));
+            const bar = document.getElementById(`fileBar-${fileIndex}`);
+            const text = document.getElementById(`filePct-${fileIndex}`);
+            if (bar) bar.style.width = `${pct}%`;
+            if (text) text.textContent = `${pct}%`;
+
+            // Overall
+            const overallPct = Math.min(100, Math.round((this.stats.transferredBytes / this.stats.totalBytes) * 100));
+            document.getElementById('overallPercent').textContent = `${overallPct}%`;
+            document.getElementById('overallProgressBar').style.width = `${overallPct}%`;
+            document.getElementById('transferredBytesText').textContent = `${Utils.fmtSize(this.stats.transferredBytes)} / ${Utils.fmtSize(this.stats.totalBytes)}`;
+
+            // Speed & ETA
+            const now = Date.now();
+            const timeDiff = (now - this.stats.lastTime) / 1000;
+            if (timeDiff >= 0.5) {
+                const bytesDiff = this.stats.transferredBytes - this.stats.lastBytes;
+                const speed = bytesDiff / timeDiff;
+                document.getElementById('transferSpeed').textContent = Utils.fmtSpeed(speed);
+
+                const remainingBytes = this.stats.totalBytes - this.stats.transferredBytes;
+                const eta = speed > 0 ? remainingBytes / speed : 0;
+                document.getElementById('transferETA').textContent = Utils.fmtTime(eta);
+
+                this.stats.lastBytes = this.stats.transferredBytes;
+                this.stats.lastTime = now;
+            }
+        },
+
+        completeTransfer() {
+            SoundFX.playSuccess();
+            UI.switchScreen('scr-complete');
+
+            const totalTime = ((Date.now() - this.stats.startTime) / 1000).toFixed(1);
+            document.getElementById('completeSummaryText').textContent = `Transferred ${this.transferFiles.length} file(s) (${Utils.fmtSize(this.stats.totalBytes)}) in ${totalTime}s`;
+
+            if (this.role === 'receiver') {
+                document.getElementById('recvCompletedListWrap').classList.remove('hidden');
+                const list = document.getElementById('recvCompletedList');
+                list.innerHTML = this.transferFiles.map((f, i) => `
+                    <div class="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-gray-800 text-xs">
+                        <span class="truncate pr-2"><i class="fas ${Utils.getFileIcon(f.name)}"></i> ${f.name}</span>
+                        <button onclick="Transfer.downloadSingle(${i})" class="px-3 py-1.5 rounded-lg bg-brand-500/10 text-brand-500 hover:bg-brand-500/20 font-bold flex items-center gap-1.5">
+                            <i class="fas fa-download"></i> Save
+                        </button>
+                    </div>
+                `).join('');
+
+                if (document.getElementById('settingAutoDL').checked) {
+                    this.transferFiles.forEach((_, idx) => this.downloadSingle(idx));
+                }
+            }
+        },
+
+        downloadSingle(index) {
+            const meta = this.transferFiles[index];
+            const item = this.receivedFiles[index];
+            if (!item || !item.finalBlob) return;
+
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(item.finalBlob);
+            a.download = meta.name;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+        },
+
+        async downloadAllZip() {
+            if (typeof JSZip === 'undefined') return;
+            const zip = new JSZip();
+            this.transferFiles.forEach((f, i) => {
+                if (this.receivedFiles[i] && this.receivedFiles[i].finalBlob) {
+                    zip.file(f.name, this.receivedFiles[i].finalBlob);
+                }
+            });
+            const content = await zip.generateAsync({ type: "blob" });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(content);
+            a.download = `DropLink-${this.code}.zip`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+        }
+    };
+
+    // --- INITIALIZATION & BINDINGS ---
+    document.addEventListener('DOMContentLoaded', () => {
+        Theme.init();
+
+        // Drag and drop event listeners
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const folderInput = document.getElementById('folderInput');
+
+        ['dragenter', 'dragover'].forEach(evt => dropZone.addEventListener(evt, (e) => { e.preventDefault(); dropZone.classList.add('border-brand-500', 'bg-brand-500/10'); }));
+        ['dragleave', 'drop'].forEach(evt => dropZone.addEventListener(evt, (e) => { e.preventDefault(); dropZone.classList.remove('border-brand-500', 'bg-brand-500/10'); }));
+
+        dropZone.addEventListener('drop', (e) => {
+            if (e.dataTransfer.files.length) {
+                UI.selectedFiles.push(...Array.from(e.dataTransfer.files));
+                UI.renderFileQueue();
+            }
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) {
+                UI.selectedFiles.push(...Array.from(fileInput.files));
+                UI.renderFileQueue();
+                fileInput.value = '';
+            }
+        });
+
+        folderInput.addEventListener('change', () => {
+            if (folderInput.files.length) {
+                UI.selectedFiles.push(...Array.from(folderInput.files));
+                UI.renderFileQueue();
+                folderInput.value = '';
+            }
+        });
+
+        // Uppercase code input locking
+        const codeInput = document.getElementById('codeInput');
+        codeInput.addEventListener('input', () => {
+            codeInput.value = codeInput.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6);
+        });
+
+        // Canvas particle system background
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+        let pts = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            pts = Array.from({ length: 30 }, () => ({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: (Math.random() - 0.5) * 0.4,
+                vy: (Math.random() - 0.5) * 0.4
+            }));
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function drawBackground() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.3)';
+            pts.forEach(p => {
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            requestAnimationFrame(drawBackground);
+        }
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) drawBackground();
+    });
     </script>
 </body>
 </html>
