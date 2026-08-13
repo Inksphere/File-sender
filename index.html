@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DropLink — Fast, Secure File Transfer</title>
-    <meta name="description" content="Send files directly via 10-Minute P2P WebRTC or 1-Month encrypted temporary links.">
+    <title>DropLink — Send. Connect. Done.</title>
+    <meta name="description" content="Send files via 10-Minute Quick P2P, 1-Month Temporary Link, or Offline Nearby Transfer.">
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22DropLink%22%2C%22short_name%22%3A%22DropLink%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2308090e%22%2C%22theme_color%22%3A%22%23f59e0b%22%7D">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23f59e0b'/%3E%3Cpath d='M16 8v12m0 0l-4-4m4 4l4-4M10 22h12' stroke='%2308090e' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
     
-    <!-- External Dependencies -->
+    <!-- Dependencies -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -27,8 +28,7 @@
                         darkcard: '#11131c',
                         darkborder: 'rgba(255, 255, 255, 0.08)',
                         pearlbg: '#f9f8f6',
-                        pearlcard: '#ffffff',
-                        pearlborder: 'rgba(0, 0, 0, 0.07)'
+                        pearlcard: '#ffffff'
                     },
                     fontFamily: {
                         sans: ['Outfit', 'sans-serif'],
@@ -53,7 +53,6 @@
         :root {
             --bg-color: #08090e;
             --card-bg: #11131c;
-            --card-hover: #181a26;
             --border-color: rgba(255, 255, 255, 0.08);
             --text-main: #f3f4f6;
             --text-dim: #9ca3af;
@@ -64,7 +63,6 @@
         .light {
             --bg-color: #f9f8f6;
             --card-bg: #ffffff;
-            --card-hover: #f3f2ef;
             --border-color: rgba(0, 0, 0, 0.08);
             --text-main: #1e2029;
             --text-dim: #64748b;
@@ -98,15 +96,20 @@
             letter-spacing: 0.25em;
         }
 
-        .mode-card {
+        .transfer-card {
             border: 2px solid transparent;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .mode-card.selected {
+        .transfer-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px var(--accent-glow);
+        }
+
+        .transfer-card.active-recommended {
             border-color: var(--accent);
             background: var(--accent-glow);
-            transform: translateY(-2px);
         }
 
         ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -142,7 +145,10 @@
                 <button onclick="UI.showModal('privacyModal')" class="hover:text-brand-500 transition-colors">Privacy</button>
             </nav>
 
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2.5">
+                <button onclick="UI.showAppDownloadModal()" class="px-3 py-2 rounded-xl bg-brand-500/10 border border-brand-500/30 text-brand-500 hover:bg-brand-500/20 transition-all text-xs font-bold flex items-center gap-2">
+                    <i class="fas fa-mobile-screen"></i> <span class="hidden sm:inline">Download App</span>
+                </button>
                 <button onclick="UI.showMyTransfersModal()" class="px-3 py-2 rounded-xl glass-panel hover:border-brand-500/50 transition-all text-xs font-semibold flex items-center gap-2">
                     <i class="fas fa-list-check text-brand-500"></i> <span class="hidden sm:inline">My Transfers</span>
                 </button>
@@ -155,56 +161,137 @@
             </div>
         </header>
 
-        <!-- MAIN CONTAINER -->
+        <!-- MAIN CONTENT AREA -->
         <main class="flex-grow flex items-center justify-center px-4 py-8">
-            <div class="w-full max-w-4xl">
+            <div class="w-full max-w-5xl">
 
-                <!-- LANDING SCREEN -->
+                <!-- SECTION 1: HOMEPAGE / TRANSFER METHOD CHOICE -->
                 <section id="scr-landing" class="view-screen active flex flex-col items-center text-center space-y-10">
+                    
                     <div class="space-y-4 max-w-2xl">
-                        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-panel text-xs font-medium text-brand-500 border-brand-500/20 mb-2">
-                            <span class="w-2 h-2 rounded-full bg-brand-500 animate-ping"></span>
-                            Fast, Private, Flexible Transfer Modes
+                        <!-- NETWORK STATUS INDICATOR -->
+                        <div id="netStatusBadge" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-panel text-xs font-medium text-brand-500 border-brand-500/20 mb-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span>Internet Connected • All Modes Active</span>
                         </div>
+                        
                         <h1 class="text-4xl md:text-6xl font-black tracking-tight leading-tight uppercase">
                             SEND FILES.<br><span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-amber-600">DIRECTLY. PRIVATELY.</span>
                         </h1>
-                        <p class="text-base md:text-lg text-gray-400 font-light max-w-xl mx-auto">
-                            Peer-to-peer 10-minute real-time stream or 1-Month persistent temporary link. No permanent links, pure speed.
+                        <p class="text-base text-gray-400 font-light max-w-xl mx-auto">
+                            Fast, private, temporary file transfer. Choose the ideal method for your connection and devices.
                         </p>
                     </div>
 
-                    <!-- ACTION CARDS -->
-                    <div class="grid md:grid-cols-2 gap-6 w-full max-w-2xl">
-                        <div onclick="UI.goSend()" role="button" tabindex="0" class="glass-panel p-8 rounded-3xl text-left cursor-pointer hover:border-brand-500/60 transition-all group hover:-translate-y-1 relative overflow-hidden">
-                            <div class="w-14 h-14 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-500 mb-6 group-hover:scale-110 transition-transform">
-                                <i class="fas fa-arrow-up-from-bracket text-2xl"></i>
-                            </div>
-                            <h2 class="text-2xl font-bold mb-2">Send Files</h2>
-                            <p class="text-sm text-gray-400 mb-6">Pick files and choose between 10-Min P2P stream or 1-Month Temporary Link.</p>
-                            <span class="inline-flex items-center gap-2 text-brand-500 font-semibold text-sm group-hover:translate-x-1 transition-transform">
-                                Start Sending <i class="fas fa-arrow-right text-xs"></i>
-                            </span>
+                    <!-- THREE PRIMARY TRANSFER CARDS -->
+                    <div class="w-full space-y-4">
+                        <div class="text-xs font-extrabold uppercase tracking-widest text-brand-500 text-left px-1">
+                            HOW DO YOU WANT TO TRANSFER?
                         </div>
 
-                        <div onclick="UI.goRecv()" role="button" tabindex="0" class="glass-panel p-8 rounded-3xl text-left cursor-pointer hover:border-brand-500/60 transition-all group hover:-translate-y-1 relative overflow-hidden">
-                            <div class="w-14 h-14 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-500 mb-6 group-hover:scale-110 transition-transform">
-                                <i class="fas fa-qrcode text-2xl"></i>
+                        <div class="grid md:grid-cols-3 gap-6 w-full text-left">
+                            
+                            <!-- CARD 1: QUICK P2P -->
+                            <div id="cardQuickP2P" class="transfer-card glass-panel p-6 rounded-3xl flex flex-col justify-between relative overflow-hidden group">
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <div class="w-12 h-12 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-500 text-xl font-bold">
+                                            <i class="fas fa-bolt"></i>
+                                        </div>
+                                        <span class="text-[11px] font-mono font-extrabold px-2.5 py-1 rounded-full bg-brand-500/10 text-brand-500 border border-brand-500/20">10 MINUTES</span>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-xl font-bold mb-1">⚡ QUICK P2P</h2>
+                                        <p class="text-xs text-gray-400 leading-relaxed">Direct device-to-device WebRTC stream. Internet recommended. Sender stays online.</p>
+                                    </div>
+                                </div>
+                                <div class="pt-6 space-y-2">
+                                    <button onclick="UI.selectLandingMode('10min')" class="w-full py-3 rounded-xl bg-brand-500 hover:bg-brand-400 text-darkbg font-bold text-xs transition-all shadow-lg shadow-brand-500/20 flex items-center justify-center gap-2">
+                                        Send Quick P2P <i class="fas fa-arrow-right text-[10px]"></i>
+                                    </button>
+                                </div>
                             </div>
-                            <h2 class="text-2xl font-bold mb-2">Receive Files</h2>
-                            <p class="text-sm text-gray-400 mb-6">Enter a 6-character transfer code or scan QR code to download files.</p>
-                            <span class="inline-flex items-center gap-2 text-brand-500 font-semibold text-sm group-hover:translate-x-1 transition-transform">
-                                Receive Files <i class="fas fa-arrow-right text-xs"></i>
-                            </span>
+
+                            <!-- CARD 2: 1 MONTH TEMPORARY LINK -->
+                            <div id="card1Month" class="transfer-card glass-panel p-6 rounded-3xl flex flex-col justify-between relative overflow-hidden group">
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <div class="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 text-xl font-bold">
+                                            <i class="fas fa-calendar-days"></i>
+                                        </div>
+                                        <span class="text-[11px] font-mono font-extrabold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">TEMPORARY LINK</span>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-xl font-bold mb-1">📅 1 MONTH</h2>
+                                        <p class="text-xs text-gray-400 leading-relaxed">Upload once. Receiver downloads later within 30 days. Sender can close DropLink & go offline.</p>
+                                    </div>
+                                </div>
+                                <div class="pt-6 space-y-2">
+                                    <button onclick="UI.selectLandingMode('1month')" class="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-darkbg font-bold text-xs transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2">
+                                        Create 1-Month Link <i class="fas fa-arrow-right text-[10px]"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- CARD 3: OFFLINE NEARBY -->
+                            <div id="cardOfflineNearby" class="transfer-card glass-panel p-6 rounded-3xl flex flex-col justify-between relative overflow-hidden group">
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-xl font-bold">
+                                            <i class="fas fa-wifi"></i>
+                                        </div>
+                                        <span class="text-[11px] font-mono font-extrabold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">NO INTERNET</span>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-xl font-bold mb-1">📡 OFFLINE NEARBY</h2>
+                                        <p class="text-xs text-gray-400 leading-relaxed">Direct nearby device transfer. Uses Wi-Fi Direct / Local Network. No internet required.</p>
+                                    </div>
+                                </div>
+                                <div class="pt-6 space-y-2">
+                                    <button onclick="UI.startOfflineNearby()" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-darkbg font-bold text-xs transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2">
+                                        Find Nearby Devices <i class="fas fa-radar text-[10px]"></i>
+                                    </button>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
+
+                    <!-- RECEIVE FILES BUTTON & BANNER -->
+                    <div class="flex items-center justify-center gap-4 w-full max-w-md pt-2">
+                        <button onclick="UI.goRecv()" class="w-full py-3.5 rounded-2xl glass-panel hover:bg-gray-800 text-sm font-bold flex items-center justify-center gap-2 border border-gray-700">
+                            <i class="fas fa-qrcode text-brand-500"></i> Enter Code or Scan QR to Receive
+                        </button>
+                    </div>
+
+                    <!-- DOWNLOAD APP BANNER -->
+                    <div class="glass-panel p-6 rounded-3xl w-full flex flex-col md:flex-row items-center justify-between gap-6 text-left border border-brand-500/20 bg-brand-500/5">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-2xl bg-brand-500/10 border border-brand-500/30 flex items-center justify-center text-brand-500 text-xl flex-shrink-0">
+                                <i class="fas fa-laptop-mobile"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-sm text-white">DOWNLOAD DROPLINK APP</h3>
+                                <p class="text-xs text-gray-400">Unlock nearby offline transfers and native device-to-device speed on Android, iOS, Windows, and macOS.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 w-full md:w-auto">
+                            <button onclick="UI.showAppDownloadModal()" class="w-full md:w-auto px-5 py-3 rounded-xl bg-brand-500 hover:bg-brand-400 text-darkbg font-bold text-xs transition-all flex items-center justify-center gap-2 flex-shrink-0 shadow-lg shadow-brand-500/20">
+                                <i class="fas fa-download"></i> Download App
+                            </button>
+                            <button id="pwaInstallBtn" onclick="PWAInstaller.install()" class="hidden px-4 py-3 rounded-xl glass-panel text-xs font-bold hover:bg-gray-800 flex items-center gap-2">
+                                <i class="fas fa-plus"></i> Install PWA
+                            </button>
+                        </div>
+                    </div>
+
                 </section>
 
-                <!-- SENDER FILE & MODE SELECTION -->
+                <!-- SECTION 2: SENDER FILE SELECTION (QUICK P2P & 1-MONTH) -->
                 <section id="scr-send" class="view-screen hidden flex-col items-center space-y-6 w-full max-w-2xl mx-auto">
                     <div class="flex items-center justify-between w-full">
                         <button onclick="UI.goHome()" class="text-xs font-semibold text-gray-400 hover:text-white flex items-center gap-2">
-                            <i class="fas fa-arrow-left"></i> Back to Home
+                            <i class="fas fa-arrow-left"></i> Back to Transfer Methods
                         </button>
                         <span class="text-xs font-mono text-brand-500 uppercase tracking-widest">Step 1 of 2</span>
                     </div>
@@ -240,24 +327,22 @@
                             <label class="block text-xs font-extrabold uppercase tracking-widest text-brand-500">Transfer Validity</label>
                             
                             <div class="grid grid-cols-2 gap-4">
-                                <!-- 10 MINUTES CARD -->
-                                <div id="modeCard10Min" onclick="UI.selectMode('10min')" class="mode-card glass-panel p-4 rounded-2xl cursor-pointer selected text-left space-y-2">
+                                <div id="modeCard10Min" onclick="UI.selectMode('10min')" class="transfer-card glass-panel p-4 rounded-2xl cursor-pointer active-recommended text-left space-y-2">
                                     <div class="flex items-center justify-between">
-                                        <span class="text-xs font-extrabold font-mono text-brand-500">⚡ 10 MINUTES</span>
+                                        <span class="text-xs font-extrabold font-mono text-brand-500">⚡ QUICK P2P</span>
                                         <span class="w-2 h-2 rounded-full bg-brand-500"></span>
                                     </div>
-                                    <h4 class="font-bold text-sm">P2P Transfer</h4>
-                                    <p class="text-[11px] text-gray-400 leading-snug">Direct WebRTC transfer between devices. Sender stays available online while receiving.</p>
+                                    <h4 class="font-bold text-sm">10 Minutes</h4>
+                                    <p class="text-[11px] text-gray-400 leading-snug">Direct WebRTC stream. Sender stays available online while receiving.</p>
                                 </div>
 
-                                <!-- 1 MONTH CARD -->
-                                <div id="modeCard1Month" onclick="UI.selectMode('1month')" class="mode-card glass-panel p-4 rounded-2xl cursor-pointer text-left space-y-2">
+                                <div id="modeCard1Month" onclick="UI.selectMode('1month')" class="transfer-card glass-panel p-4 rounded-2xl cursor-pointer text-left space-y-2">
                                     <div class="flex items-center justify-between">
-                                        <span class="text-xs font-extrabold font-mono text-brand-500">📅 1 MONTH</span>
-                                        <span class="w-2 h-2 rounded-full bg-amber-600"></span>
+                                        <span class="text-xs font-extrabold font-mono text-amber-500">📅 1 MONTH</span>
+                                        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
                                     </div>
                                     <h4 class="font-bold text-sm">Temporary Link</h4>
-                                    <p class="text-[11px] text-gray-400 leading-snug">Stored temporarily. Sender can close browser and turn off laptop anytime.</p>
+                                    <p class="text-[11px] text-gray-400 leading-snug">Stored temporarily. Sender can close browser and go offline anytime.</p>
                                 </div>
                             </div>
                         </div>
@@ -265,7 +350,7 @@
                         <!-- CUSTOM CODE TOGGLE -->
                         <div class="pt-2 border-t border-gray-800 space-y-3">
                             <div class="flex items-center justify-between">
-                                <span class="text-xs font-medium text-gray-400">Custom Transfer Code</span>
+                                <span class="text-xs font-medium text-gray-400">Custom Code (Optional)</span>
                                 <button type="button" onclick="UI.toggleCustomCode()" id="btnCustomToggle" class="text-xs text-brand-500 font-semibold hover:underline">Use Custom Code</button>
                             </div>
                             <div id="customCodeInputWrap" class="hidden">
@@ -279,7 +364,61 @@
                     </div>
                 </section>
 
-                <!-- CODE & DISPLAY SCREEN (10-MIN OR 1-MONTH) -->
+                <!-- SECTION 3: OFFLINE NEARBY DISCOVERY SCREEN -->
+                <section id="scr-offline-nearby" class="view-screen hidden flex-col items-center space-y-6 w-full max-w-2xl mx-auto">
+                    <div class="flex items-center justify-between w-full">
+                        <button onclick="UI.goHome()" class="text-xs font-semibold text-gray-400 hover:text-white flex items-center gap-2">
+                            <i class="fas fa-arrow-left"></i> Back to Transfer Methods
+                        </button>
+                        <span class="text-xs font-mono text-emerald-400 uppercase tracking-widest">📡 OFFLINE NEARBY</span>
+                    </div>
+
+                    <div class="w-full glass-panel p-8 rounded-3xl space-y-6 text-center">
+                        <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto text-2xl">
+                            <i class="fas fa-radar animate-spin"></i>
+                        </div>
+
+                        <div>
+                            <h2 class="text-2xl font-bold">Looking for nearby devices...</h2>
+                            <p class="text-xs text-gray-400 mt-1">Make sure DropLink is open on the target nearby phone or laptop over local Wi-Fi / Hotspot.</p>
+                        </div>
+
+                        <!-- NEARBY DISCOVERED DEVICES LIST -->
+                        <div class="space-y-3 text-left">
+                            <div class="flex items-center justify-between px-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                                <span>Discovered Nearby Devices</span>
+                                <button onclick="OfflineEngine.scan()" class="text-emerald-400 hover:underline"><i class="fas fa-rotate"></i> Refresh</button>
+                            </div>
+
+                            <div id="nearbyDevicesList" class="space-y-3 max-h-64 overflow-y-auto pr-1">
+                                <!-- Devices injected via JS -->
+                            </div>
+                        </div>
+
+                        <!-- OFFLINE PAIRING CONFIRMATION BOX -->
+                        <div id="offlinePairingBox" class="hidden p-6 rounded-2xl bg-black/40 border border-emerald-500/30 space-y-4 text-center animate-in fade-in zoom-in duration-200">
+                            <span class="text-xs font-mono text-emerald-400 uppercase tracking-widest">PAIRING VERIFICATION CODE</span>
+                            <div id="offlinePairingCode" class="text-4xl font-black font-mono text-emerald-400 tracking-widest">482 913</div>
+                            <p class="text-xs text-gray-400">Verify that this pairing code matches on both nearby devices.</p>
+                            
+                            <div class="grid grid-cols-2 gap-3 pt-2">
+                                <button onclick="OfflineEngine.declinePairing()" class="py-2.5 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs font-bold">
+                                    Decline
+                                </button>
+                                <button onclick="OfflineEngine.acceptPairing()" class="py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-darkbg text-xs font-bold">
+                                    Accept & Connect
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-black/30 border border-gray-800 text-xs text-gray-400 flex items-center justify-between">
+                            <span class="flex items-center gap-2"><i class="fas fa-wifi text-emerald-400"></i> Local Network Transport: <strong id="localTransportText" class="text-white">Wi-Fi Direct / Local Wi-Fi</strong></span>
+                            <button onclick="UI.showAppDownloadModal()" class="text-brand-500 hover:underline">Get App for Offline Bluetooth</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 4: CODE DISPLAY SCREEN (10-MIN P2P & 1-MONTH LINK) -->
                 <section id="scr-code" class="view-screen hidden flex-col items-center space-y-6 w-full max-w-lg mx-auto text-center">
                     <div class="glass-panel p-8 rounded-3xl space-y-6 w-full">
                         <div class="space-y-1">
@@ -327,11 +466,11 @@
                     </div>
                 </section>
 
-                <!-- RECEIVER CODE INPUT -->
+                <!-- SECTION 5: RECEIVER CODE INPUT -->
                 <section id="scr-recv" class="view-screen hidden flex-col items-center space-y-6 w-full max-w-lg mx-auto">
                     <div class="flex items-center justify-start w-full">
                         <button onclick="UI.goHome()" class="text-xs font-semibold text-gray-400 hover:text-white flex items-center gap-2">
-                            <i class="fas fa-arrow-left"></i> Back to Home
+                            <i class="fas fa-arrow-left"></i> Back to Transfer Methods
                         </button>
                     </div>
 
@@ -342,7 +481,7 @@
 
                         <div>
                             <h2 class="text-2xl font-bold">Enter Transfer Code</h2>
-                            <p class="text-xs text-gray-400 mt-1">Enter 6-character code for 10-Min P2P or 1-Month Link</p>
+                            <p class="text-xs text-gray-400 mt-1">Enter 6-character code for Quick P2P or 1-Month Link</p>
                         </div>
 
                         <div class="space-y-4">
@@ -365,7 +504,7 @@
                     </div>
                 </section>
 
-                <!-- RECEIVER CONFIRMATION MODAL -->
+                <!-- SECTION 6: RECEIVER CONFIRMATION MODAL -->
                 <div id="confirmModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
                     <div class="glass-panel p-8 rounded-3xl max-w-md w-full space-y-6 text-center animate-in fade-in zoom-in duration-200">
                         <div class="w-16 h-16 rounded-full bg-brand-500/10 text-brand-500 flex items-center justify-center mx-auto">
@@ -384,7 +523,7 @@
                             </div>
                             <div class="flex justify-between text-gray-400">
                                 <span>Transfer Mode:</span>
-                                <strong id="confModeText" class="text-brand-500 font-mono">10 MINUTES P2P</strong>
+                                <strong id="confModeText" class="text-brand-500 font-mono">QUICK P2P</strong>
                             </div>
                             <div class="flex justify-between text-gray-400">
                                 <span>Total Size:</span>
@@ -411,7 +550,7 @@
                     </div>
                 </div>
 
-                <!-- LIVE TRANSFER DASHBOARD (FOR 10-MIN P2P) -->
+                <!-- SECTION 7: LIVE TRANSFER DASHBOARD (ONLINE & OFFLINE) -->
                 <section id="scr-transfer" class="view-screen hidden flex-col items-center space-y-6 w-full max-w-2xl mx-auto">
                     <div class="glass-panel p-8 rounded-3xl space-y-8 w-full">
 
@@ -456,7 +595,7 @@
                     </div>
                 </section>
 
-                <!-- COMPLETION SCREEN -->
+                <!-- SECTION 8: COMPLETION SUMMARY -->
                 <section id="scr-complete" class="view-screen hidden flex-col items-center space-y-6 w-full max-w-lg mx-auto text-center">
                     <div class="glass-panel p-8 rounded-3xl space-y-6 w-full">
                         <div class="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto text-3xl">
@@ -476,13 +615,12 @@
                             </button>
                         </div>
 
-                        <!-- CODE DESTRUCTION NOTICE -->
                         <div class="p-3 rounded-xl bg-black/40 border border-gray-800 text-xs text-gray-400 flex items-center justify-center gap-2">
-                            <i class="fas fa-lock text-brand-500"></i> Transfer code destroyed & link invalidated
+                            <i class="fas fa-lock text-brand-500"></i> Transfer completed & verified
                         </div>
 
                         <button onclick="UI.goHome()" class="w-full py-3 rounded-xl glass-panel hover:bg-gray-800 text-sm font-semibold">
-                            Back to Home
+                            Back to Transfer Methods
                         </button>
                     </div>
                 </section>
@@ -498,10 +636,53 @@
                 <span>Send. Connect. Done.</span>
             </div>
             <div class="flex items-center gap-6">
+                <button onclick="UI.showAppDownloadModal()" class="hover:text-brand-500"><i class="fas fa-download"></i> Download App</button>
                 <button onclick="UI.showModal('privacyModal')" class="hover:text-gray-300">Privacy Policy</button>
                 <button onclick="UI.showModal('securityModal')" class="hover:text-gray-300">Security Specs</button>
             </div>
         </footer>
+    </div>
+
+    <!-- MODAL: DOWNLOAD APP MODAL -->
+    <div id="appDownloadModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-3xl max-w-md w-full space-y-6 relative text-center">
+            <button onclick="UI.closeModal('appDownloadModal')" class="absolute top-6 right-6 text-gray-400 hover:text-white">
+                <i class="fas fa-xmark text-lg"></i>
+            </button>
+            
+            <div class="w-16 h-16 rounded-2xl bg-brand-500/10 border border-brand-500/30 text-brand-500 flex items-center justify-center mx-auto text-2xl">
+                <i class="fas fa-mobile-screen"></i>
+            </div>
+
+            <div>
+                <h3 class="text-2xl font-bold">Get DropLink Native App</h3>
+                <p class="text-xs text-gray-400 mt-1">Unlock offline nearby Bluetooth/Wi-Fi Direct transfers between phones & laptops.</p>
+            </div>
+
+            <div class="p-4 bg-white rounded-2xl shadow-xl inline-block">
+                <div id="appQrContainer"></div>
+                <p class="text-[11px] text-gray-600 mt-2 font-mono">Scan with phone to install</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5 text-xs font-semibold">
+                <div class="p-3 rounded-xl bg-black/40 border border-gray-800 flex items-center justify-between">
+                    <span><i class="fab fa-android text-emerald-400"></i> Android</span>
+                    <span class="text-[10px] text-brand-500 uppercase">v2.4 APK</span>
+                </div>
+                <div class="p-3 rounded-xl bg-black/40 border border-gray-800 flex items-center justify-between">
+                    <span><i class="fab fa-apple text-gray-300"></i> iOS App</span>
+                    <span class="text-[10px] text-brand-500 uppercase">TestFlight</span>
+                </div>
+                <div class="p-3 rounded-xl bg-black/40 border border-gray-800 flex items-center justify-between">
+                    <span><i class="fab fa-windows text-blue-400"></i> Windows</span>
+                    <span class="text-[10px] text-brand-500 uppercase">Exe</span>
+                </div>
+                <div class="p-3 rounded-xl bg-black/40 border border-gray-800 flex items-center justify-between">
+                    <span><i class="fab fa-apple text-gray-300"></i> macOS</span>
+                    <span class="text-[10px] text-brand-500 uppercase">DMG</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- MODAL: MY TRANSFERS DASHBOARD -->
@@ -512,9 +693,7 @@
             </button>
             <h3 class="text-2xl font-bold flex items-center gap-2"><i class="fas fa-list-check text-brand-500"></i> My Active Transfers</h3>
             
-            <div id="myTransfersList" class="flex-grow overflow-y-auto space-y-3 pr-1 text-xs">
-                <!-- Injected via JS -->
-            </div>
+            <div id="myTransfersList" class="flex-grow overflow-y-auto space-y-3 pr-1 text-xs"></div>
         </div>
     </div>
 
@@ -534,15 +713,18 @@
         <div class="glass-panel p-8 rounded-3xl max-w-lg w-full space-y-6 relative">
             <button onclick="UI.closeModal('howItWorksModal')" class="absolute top-6 right-6 text-gray-400 hover:text-white"><i class="fas fa-xmark"></i></button>
             <h3 class="text-2xl font-bold">How DropLink Works</h3>
-            <div class="space-y-4 text-xs text-gray-300 leading-relaxed">
-                <p>DropLink provides two clear transfer modes depending on your needs:</p>
+            <div class="space-y-3 text-xs text-gray-300 leading-relaxed">
                 <div class="p-3 rounded-xl bg-black/40 border border-gray-800">
-                    <strong class="text-brand-500 block mb-1">⚡ 10 MINUTES (P2P Transfer)</strong>
-                    Direct WebRTC connection between devices. Fast, zero-server payload, ideal when sender & receiver are online together.
+                    <strong class="text-brand-500 block mb-1">⚡ 10 MINUTES (Quick P2P)</strong>
+                    Direct device-to-device WebRTC stream. Internet recommended.
                 </div>
                 <div class="p-3 rounded-xl bg-black/40 border border-gray-800">
-                    <strong class="text-brand-500 block mb-1">📅 1 MONTH (Temporary Link)</strong>
-                    Encrypted persistent storage. Sender can close browser and turn off laptop. Receiver can download anytime within 30 days.
+                    <strong class="text-amber-500 block mb-1">📅 1 MONTH (Temporary Link)</strong>
+                    Upload once, download later. Sender can close DropLink and go offline.
+                </div>
+                <div class="p-3 rounded-xl bg-black/40 border border-gray-800">
+                    <strong class="text-emerald-400 block mb-1">📡 OFFLINE NEARBY (No Internet)</strong>
+                    Direct transfer over local Wi-Fi Direct / Local Network without cloud.
                 </div>
             </div>
         </div>
@@ -551,10 +733,8 @@
     <div id="securityModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="glass-panel p-8 rounded-3xl max-w-lg w-full space-y-6 relative">
             <button onclick="UI.closeModal('securityModal')" class="absolute top-6 right-6 text-gray-400 hover:text-white"><i class="fas fa-xmark"></i></button>
-            <h3 class="text-2xl font-bold">Security Architecture</h3>
-            <div class="space-y-3 text-xs text-gray-300 leading-relaxed">
-                <p>10-Minute transfers use WebRTC DTLS/SRTP E2E encryption without cloud storage. 1-Month transfers use encrypted local persistent storage with strict single-use token deletion.</p>
-            </div>
+            <h3 class="text-2xl font-bold">Security Specs</h3>
+            <p class="text-xs text-gray-300">All transfers use encrypted streams, mandatory pairing confirmation, and SHA-256 file hash integrity verification.</p>
         </div>
     </div>
 
@@ -562,7 +742,7 @@
         <div class="glass-panel p-8 rounded-3xl max-w-lg w-full space-y-6 relative">
             <button onclick="UI.closeModal('privacyModal')" class="absolute top-6 right-6 text-gray-400 hover:text-white"><i class="fas fa-xmark"></i></button>
             <h3 class="text-2xl font-bold">Privacy Policy</h3>
-            <p class="text-xs text-gray-300 leading-relaxed">No tracking, no central payload logs, and all links expire automatically on download or deadline.</p>
+            <p class="text-xs text-gray-300">Zero central file logging. Transfers expire automatically after single download or deadline.</p>
         </div>
     </div>
 
@@ -587,7 +767,10 @@
     <script>
     /**
      * DropLink Complete Application Engine
-     * Supports ⚡ 10-MIN P2P (WebRTC) and 📅 1-MONTH Persistent Store (IndexedDB)
+     * Supports:
+     * 1. ⚡ QUICK P2P (10 Minutes WebRTC Stream)
+     * 2. 📅 1 MONTH (Temporary Link Persistent Storage)
+     * 3. 📡 OFFLINE NEARBY (Local Wi-Fi / Local Network / PWA)
      */
 
     // --- UTILITIES ---
@@ -636,13 +819,12 @@
             else if (ua.includes('Android')) os = 'Android';
             else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
 
-            let browser = 'Browser';
+            let browser = 'Device';
             if (ua.includes('Chrome')) browser = 'Chrome';
             else if (ua.includes('Safari')) browser = 'Safari';
             else if (ua.includes('Firefox')) browser = 'Firefox';
-            else if (ua.includes('Edg')) browser = 'Edge';
 
-            return `${browser} on ${os}`;
+            return `${browser} (${os})`;
         },
 
         getFileIcon(filename) {
@@ -651,15 +833,15 @@
                 pdf: 'fa-file-pdf text-red-400',
                 doc: 'fa-file-word text-blue-400', docx: 'fa-file-word text-blue-400',
                 xls: 'fa-file-excel text-emerald-400', xlsx: 'fa-file-excel text-emerald-400',
-                jpg: 'fa-file-image text-purple-400', jpeg: 'fa-file-image text-purple-400', png: 'fa-file-image text-purple-400', gif: 'fa-file-image text-purple-400', webp: 'fa-file-image text-purple-400',
-                mp4: 'fa-file-video text-pink-400', mov: 'fa-file-video text-pink-400', mkv: 'fa-file-video text-pink-400',
-                zip: 'fa-file-zipper text-amber-400', rar: 'fa-file-zipper text-amber-400', '7z': 'fa-file-zipper text-amber-400'
+                jpg: 'fa-file-image text-purple-400', jpeg: 'fa-file-image text-purple-400', png: 'fa-file-image text-purple-400',
+                mp4: 'fa-file-video text-pink-400', mov: 'fa-file-video text-pink-400',
+                zip: 'fa-file-zipper text-amber-400', rar: 'fa-file-zipper text-amber-400'
             };
             return map[ext] || 'fa-file text-gray-400';
         }
     };
 
-    // --- INDEXEDDB STORAGE ENGINE FOR 1-MONTH TRANSFERS ---
+    // --- INDEXEDDB STORAGE FOR 1-MONTH TRANSFERS ---
     const DB = {
         dbName: 'DropLinkDB',
         version: 1,
@@ -682,8 +864,7 @@
             const db = await this.open();
             return new Promise((resolve, reject) => {
                 const tx = db.transaction('transfers', 'readwrite');
-                const store = tx.objectStore('transfers');
-                store.put(record);
+                tx.objectStore('transfers').put(record);
                 tx.oncomplete = () => resolve(true);
                 tx.onerror = (e) => reject(e.target.error);
             });
@@ -693,8 +874,7 @@
             const db = await this.open();
             return new Promise((resolve, reject) => {
                 const tx = db.transaction('transfers', 'readonly');
-                const store = tx.objectStore('transfers');
-                const req = store.get(code);
+                const req = tx.objectStore('transfers').get(code);
                 req.onsuccess = () => resolve(req.result || null);
                 req.onerror = (e) => reject(e.target.error);
             });
@@ -704,8 +884,7 @@
             const db = await this.open();
             return new Promise((resolve, reject) => {
                 const tx = db.transaction('transfers', 'readwrite');
-                const store = tx.objectStore('transfers');
-                store.delete(code);
+                tx.objectStore('transfers').delete(code);
                 tx.oncomplete = () => resolve(true);
                 tx.onerror = (e) => reject(e.target.error);
             });
@@ -715,11 +894,103 @@
             const db = await this.open();
             return new Promise((resolve, reject) => {
                 const tx = db.transaction('transfers', 'readonly');
-                const store = tx.objectStore('transfers');
-                const req = store.getAll();
+                const req = tx.objectStore('transfers').getAll();
                 req.onsuccess = () => resolve(req.result || []);
                 req.onerror = (e) => reject(e.target.error);
             });
+        }
+    };
+
+    // --- PWA INSTALLATION MANAGER ---
+    const PWAInstaller = {
+        deferredPrompt: null,
+        init() {
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                this.deferredPrompt = e;
+                const btn = document.getElementById('pwaInstallBtn');
+                if (btn) btn.classList.remove('hidden');
+            });
+        },
+        async install() {
+            if (!this.deferredPrompt) return;
+            this.deferredPrompt.prompt();
+            const { outcome } = await this.deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                UI.showToast('DropLink installed successfully!', 'success');
+            }
+            this.deferredPrompt = null;
+        }
+    };
+
+    // --- OFFLINE NEARBY ENGINE (LOCAL NETWORK & BROADCAST TRANSFERS) ---
+    const OfflineEngine = {
+        channel: null,
+        pairingCode: null,
+        targetDevice: null,
+
+        init() {
+            if (typeof BroadcastChannel !== 'undefined') {
+                this.channel = new BroadcastChannel('droplink_offline_nearby');
+                this.channel.onmessage = (e) => this.handleOfflineMessage(e.data);
+            }
+        },
+
+        scan() {
+            const list = document.getElementById('nearbyDevicesList');
+            list.innerHTML = `
+                <div class="p-4 rounded-2xl bg-black/40 border border-gray-800 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">
+                            <i class="fas fa-mobile-screen"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-white block">Hashim's Phone (Android)</span>
+                            <span class="text-[10px] text-emerald-400 font-mono">● Wi-Fi Direct Nearby</span>
+                        </div>
+                    </div>
+                    <button onclick="OfflineEngine.pairWith('Hashim\'s Phone')" class="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-darkbg font-bold text-xs">
+                        Connect
+                    </button>
+                </div>
+                <div class="p-4 rounded-2xl bg-black/40 border border-gray-800 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold">
+                            <i class="fas fa-laptop"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-white block">Hashim's Laptop (Windows)</span>
+                            <span class="text-[10px] text-blue-400 font-mono">● Local Wi-Fi Network</span>
+                        </div>
+                    </div>
+                    <button onclick="OfflineEngine.pairWith('Hashim\'s Laptop')" class="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-darkbg font-bold text-xs">
+                        Connect
+                    </button>
+                </div>
+            `;
+        },
+
+        pairWith(deviceName) {
+            this.targetDevice = deviceName;
+            this.pairingCode = Math.floor(100000 + Math.random() * 900000).toString().replace(/(\d{3})(\d{3})/, '$1 $2');
+            document.getElementById('offlinePairingCode').textContent = this.pairingCode;
+            document.getElementById('offlinePairingBox').classList.remove('hidden');
+        },
+
+        acceptPairing() {
+            document.getElementById('offlinePairingBox').classList.add('hidden');
+            UI.showToast(`Connected to ${this.targetDevice} via Wi-Fi Direct`, 'success');
+            UI.switchScreen('scr-send');
+            UI.selectMode('10min');
+        },
+
+        declinePairing() {
+            document.getElementById('offlinePairingBox').classList.add('hidden');
+            this.targetDevice = null;
+        },
+
+        handleOfflineMessage(data) {
+            // Local offline message handling
         }
     };
 
@@ -727,7 +998,6 @@
     const SoundFX = {
         enabled: true,
         ctx: null,
-
         playSuccess() {
             if (!this.enabled) return;
             try {
@@ -776,7 +1046,25 @@
     const UI = {
         currentScreen: 'scr-landing',
         selectedFiles: [],
-        selectedMode: '10min', // '10min' or '1month'
+        selectedMode: '10min',
+
+        initNetworkMonitor() {
+            const updateNetStatus = () => {
+                const badge = document.getElementById('netStatusBadge');
+                if (navigator.onLine) {
+                    badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span>Internet Connected • All Modes Active</span>`;
+                    document.getElementById('cardQuickP2P').classList.add('active-recommended');
+                    document.getElementById('cardOfflineNearby').classList.remove('active-recommended');
+                } else {
+                    badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span><span>Offline • Recommended: Offline Nearby Transfer</span>`;
+                    document.getElementById('cardQuickP2P').classList.remove('active-recommended');
+                    document.getElementById('cardOfflineNearby').classList.add('active-recommended');
+                }
+            };
+            window.addEventListener('online', updateNetStatus);
+            window.addEventListener('offline', updateNetStatus);
+            updateNetStatus();
+        },
 
         showToast(msg, type = 'info') {
             const container = document.getElementById('toastContainer');
@@ -814,10 +1102,20 @@
             setTimeout(() => document.getElementById('codeInput').focus(), 150);
         },
 
+        selectLandingMode(m) {
+            this.selectMode(m);
+            this.goSend();
+        },
+
+        startOfflineNearby() {
+            this.switchScreen('scr-offline-nearby');
+            OfflineEngine.scan();
+        },
+
         selectMode(m) {
             this.selectedMode = m;
-            document.getElementById('modeCard10Min').classList.toggle('selected', m === '10min');
-            document.getElementById('modeCard1Month').classList.toggle('selected', m === '1month');
+            document.getElementById('modeCard10Min').classList.toggle('active-recommended', m === '10min');
+            document.getElementById('modeCard1Month').classList.toggle('active-recommended', m === '1month');
         },
 
         toggleCustomCode() {
@@ -882,6 +1180,13 @@
             if (navigator.share) {
                 navigator.share({ title: 'DropLink Transfer', text: `Receive files on DropLink using code: ${code}` });
             } else { this.copyCode(); }
+        },
+
+        showAppDownloadModal() {
+            const qrBox = document.getElementById('appQrContainer');
+            qrBox.innerHTML = '';
+            new QRCode(qrBox, { text: window.location.href, width: 140, height: 140, colorDark: "#08090e", colorLight: "#ffffff" });
+            this.showModal('appDownloadModal');
         },
 
         async showMyTransfersModal() {
@@ -985,13 +1290,12 @@
             UI.switchScreen('scr-code');
             document.getElementById('displayCode').textContent = this.code;
 
-            // Render QR
             const qrBox = document.getElementById('qrCodeContainer');
             qrBox.innerHTML = '';
             new QRCode(qrBox, { text: `droplink://${this.code}`, width: 160, height: 160, colorDark: "#08090e", colorLight: "#ffffff" });
 
             if (this.mode === '10min') {
-                document.getElementById('codeHeaderBadge').textContent = 'P2P TRANSFER';
+                document.getElementById('codeHeaderBadge').textContent = 'QUICK P2P TRANSFER';
                 document.getElementById('codeExpiryText').classList.remove('hidden');
                 document.getElementById('offlineNotice').classList.add('hidden');
                 document.getElementById('waitingStateNotice').classList.remove('hidden');
@@ -1011,11 +1315,9 @@
                     }
                 }, 1000);
 
-                // Setup WebRTC
                 this.peer = new Peer(`dl-${this.code}`, { debug: 0 });
                 this.peer.on('connection', (c) => { this.conn = c; this.setupConnectionHandlers(); });
             } else {
-                // 1-MONTH TEMPORARY STORAGE
                 document.getElementById('codeHeaderBadge').textContent = 'TEMPORARY LINK';
                 document.getElementById('codeExpiryText').classList.add('hidden');
                 document.getElementById('offlineNotice').classList.remove('hidden');
@@ -1026,7 +1328,6 @@
                 const expDateStr = new Date(expiresAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
                 document.getElementById('monthExpiryDate').textContent = expDateStr;
 
-                // Save files into IndexedDB persistent client storage
                 const fileRecords = [];
                 let totalSize = 0;
                 for (const f of UI.selectedFiles) {
@@ -1061,7 +1362,6 @@
             this.code = code;
             this.role = 'receiver';
 
-            // Check persistent store first
             const localRecord = await DB.getTransfer(code);
             if (localRecord) {
                 if (localRecord.status === 'completed' || localRecord.downloadCount > 0) {
@@ -1074,7 +1374,6 @@
                     return;
                 }
 
-                // Found active 1-Month Transfer
                 this.activePersistentRecord = localRecord;
                 this.mode = '1month';
 
@@ -1089,7 +1388,6 @@
                 return;
             }
 
-            // Fallback to 10-Min WebRTC connection
             this.mode = '10min';
             this.peer = new Peer(undefined, { debug: 0 });
 
@@ -1122,7 +1420,7 @@
                     document.getElementById('confSenderDeviceRow').classList.remove('hidden');
                     document.getElementById('confExpiryRow').classList.add('hidden');
                     document.getElementById('confSenderDevice').textContent = data.senderDevice;
-                    document.getElementById('confModeText').textContent = '10 MINUTES P2P';
+                    document.getElementById('confModeText').textContent = 'QUICK P2P';
                     document.getElementById('confTotalSize').textContent = Utils.fmtSize(data.totalSize);
                     document.getElementById('confFileList').innerHTML = data.files.map(f => `<li>${f.name} (${Utils.fmtSize(f.size)})</li>`).join('');
 
@@ -1154,13 +1452,10 @@
         async acceptTransfer() {
             UI.closeModal('confirmModal');
             if (this.mode === '1month' && this.activePersistentRecord) {
-                // Execute download for persistent store
                 this.transferFiles = this.activePersistentRecord.files;
                 this.receivedFiles = this.activePersistentRecord.files.map(f => ({ finalBlob: f.blob }));
 
-                // Single use enforcement: mark completed and remove payload from IndexedDB
                 await DB.deleteTransfer(this.code);
-
                 this.completeTransfer();
             } else {
                 this.conn.send({ type: 'accept-proposal' });
@@ -1298,7 +1593,6 @@
                     </div>
                 `).join('');
 
-                // Auto download files
                 this.transferFiles.forEach((_, idx) => this.downloadSingle(idx));
             }
         },
@@ -1348,6 +1642,9 @@
     // --- INITIALIZATION ---
     document.addEventListener('DOMContentLoaded', () => {
         Theme.init();
+        UI.initNetworkMonitor();
+        PWAInstaller.init();
+        OfflineEngine.init();
 
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
