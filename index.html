@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DropLink — Peer-to-Peer File Transfer</title>
-    <meta name="description" content="Fast, direct, encrypted peer-to-peer file transfer with no server storage.">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23f59e0b'/%3E%3Cpath d='M16 8v12m0 0l-4-4m4 4l4-4M10 22h12' stroke='%23090a0f' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
+    <title>DropLink — Fast, Secure File Transfer</title>
+    <meta name="description" content="Send files directly via 10-Minute P2P WebRTC or 1-Month encrypted temporary links.">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23f59e0b'/%3E%3Cpath d='M16 8v12m0 0l-4-4m4 4l4-4M10 22h12' stroke='%2308090e' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
     
     <!-- External Dependencies -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -16,7 +16,7 @@
                 extend: {
                     colors: {
                         brand: {
-                            50: '#fffbebeb',
+                            50: '#fffbe3',
                             100: '#fef3c7',
                             400: '#fbbf24',
                             500: '#f59e0b',
@@ -25,7 +25,10 @@
                         },
                         darkbg: '#08090e',
                         darkcard: '#11131c',
-                        darkborder: 'rgba(255, 255, 255, 0.08)'
+                        darkborder: 'rgba(255, 255, 255, 0.08)',
+                        pearlbg: '#f9f8f6',
+                        pearlcard: '#ffffff',
+                        pearlborder: 'rgba(0, 0, 0, 0.07)'
                     },
                     fontFamily: {
                         sans: ['Outfit', 'sans-serif'],
@@ -55,16 +58,18 @@
             --text-main: #f3f4f6;
             --text-dim: #9ca3af;
             --accent: #f59e0b;
+            --accent-glow: rgba(245, 158, 11, 0.12);
         }
 
         .light {
-            --bg-color: #f8fafc;
+            --bg-color: #f9f8f6;
             --card-bg: #ffffff;
-            --card-hover: #f1f5f9;
+            --card-hover: #f3f2ef;
             --border-color: rgba(0, 0, 0, 0.08);
-            --text-main: #0f172a;
+            --text-main: #1e2029;
             --text-dim: #64748b;
             --accent: #d97706;
+            --accent-glow: rgba(217, 119, 6, 0.08);
         }
 
         body {
@@ -77,23 +82,15 @@
         }
 
         .bg-grid {
-            background-image: radial-gradient(rgba(245, 158, 11, 0.08) 1px, transparent 1px);
+            background-image: radial-gradient(rgba(245, 158, 11, 0.07) 1px, transparent 1px);
             background-size: 28px 28px;
         }
 
         .glass-panel {
             background: var(--card-bg);
             border: 1px solid var(--border-color);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
             backdrop-filter: blur(12px);
-        }
-
-        .pulse-ring {
-            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        @keyframes pulse-ring {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.05); }
         }
 
         .code-char {
@@ -101,7 +98,17 @@
             letter-spacing: 0.25em;
         }
 
-        /* Custom Scrollbar */
+        .mode-card {
+            border: 2px solid transparent;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .mode-card.selected {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+            transform: translateY(-2px);
+        }
+
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.3); border-radius: 99px; }
@@ -114,11 +121,10 @@
 </head>
 <body class="bg-grid flex flex-col justify-between min-h-screen">
 
-    <!-- Background Canvas Mesh -->
     <canvas id="bgCanvas" class="fixed inset-0 pointer-events-none z-0 opacity-40"></canvas>
 
     <div class="relative z-10 flex flex-col min-h-screen">
-        <!-- TOP NAVIGATION -->
+        <!-- HEADER -->
         <header class="w-full max-w-6xl mx-auto px-4 py-5 flex items-center justify-between">
             <a href="#" onclick="UI.goHome()" class="flex items-center gap-3 group">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-brand-400 flex items-center justify-center text-darkbg shadow-lg shadow-brand-500/20 group-hover:scale-105 transition-transform">
@@ -126,7 +132,7 @@
                 </div>
                 <div class="flex flex-col">
                     <span class="font-extrabold text-xl tracking-tight leading-none">Drop<span class="text-brand-500">Link</span></span>
-                    <span class="text-[10px] tracking-widest text-gray-400 font-mono uppercase">Direct P2P</span>
+                    <span class="text-[10px] tracking-widest text-gray-400 font-mono uppercase">Send. Connect. Done.</span>
                 </div>
             </a>
 
@@ -137,6 +143,9 @@
             </nav>
 
             <div class="flex items-center gap-3">
+                <button onclick="UI.showMyTransfersModal()" class="px-3 py-2 rounded-xl glass-panel hover:border-brand-500/50 transition-all text-xs font-semibold flex items-center gap-2">
+                    <i class="fas fa-list-check text-brand-500"></i> <span class="hidden sm:inline">My Transfers</span>
+                </button>
                 <button onclick="Theme.toggle()" aria-label="Toggle Theme" class="p-2.5 rounded-xl glass-panel hover:border-brand-500/50 transition-all text-sm w-10 h-10 flex items-center justify-center">
                     <i id="themeIcon" class="fas fa-moon text-brand-500"></i>
                 </button>
@@ -146,63 +155,52 @@
             </div>
         </header>
 
-        <!-- MAIN CONTENT AREA -->
+        <!-- MAIN CONTAINER -->
         <main class="flex-grow flex items-center justify-center px-4 py-8">
             <div class="w-full max-w-4xl">
 
-                <!-- SCREEN: LANDING (HOME) -->
+                <!-- LANDING SCREEN -->
                 <section id="scr-landing" class="view-screen active flex flex-col items-center text-center space-y-10">
                     <div class="space-y-4 max-w-2xl">
-                        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass-panel text-xs font-medium text-brand-500 border-brand-500/20 mb-2">
+                        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-panel text-xs font-medium text-brand-500 border-brand-500/20 mb-2">
                             <span class="w-2 h-2 rounded-full bg-brand-500 animate-ping"></span>
-                            Zero-Cloud Peer-To-Peer File Transfer
+                            Fast, Private, Flexible Transfer Modes
                         </div>
-                        <h1 class="text-4xl md:text-6xl font-black tracking-tight leading-tight">
-                            Send files. <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-amber-600">Directly. Privately.</span>
+                        <h1 class="text-4xl md:text-6xl font-black tracking-tight leading-tight uppercase">
+                            SEND FILES.<br><span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-amber-600">DIRECTLY. PRIVATELY.</span>
                         </h1>
-                        <p class="text-base md:text-lg text-gray-400 font-light">
-                            High-speed end-to-end peer-to-peer file transfer. No server storage, no permanent links, and no file size limits.
+                        <p class="text-base md:text-lg text-gray-400 font-light max-w-xl mx-auto">
+                            Peer-to-peer 10-minute real-time stream or 1-Month persistent temporary link. No permanent links, pure speed.
                         </p>
                     </div>
 
                     <!-- ACTION CARDS -->
                     <div class="grid md:grid-cols-2 gap-6 w-full max-w-2xl">
-                        <!-- SEND CARD -->
-                        <div onclick="UI.goSend()" role="button" tabindex="0" class="glass-panel p-8 rounded-2xl text-left cursor-pointer hover:border-brand-500/60 transition-all group hover:-translate-y-1 relative overflow-hidden">
-                            <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-brand-500/5 rounded-full blur-2xl group-hover:bg-brand-500/15 transition-all"></div>
+                        <div onclick="UI.goSend()" role="button" tabindex="0" class="glass-panel p-8 rounded-3xl text-left cursor-pointer hover:border-brand-500/60 transition-all group hover:-translate-y-1 relative overflow-hidden">
                             <div class="w-14 h-14 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-500 mb-6 group-hover:scale-110 transition-transform">
                                 <i class="fas fa-arrow-up-from-bracket text-2xl"></i>
                             </div>
                             <h2 class="text-2xl font-bold mb-2">Send Files</h2>
-                            <p class="text-sm text-gray-400 mb-6">Select files or folders to create a short single-use code & QR code.</p>
+                            <p class="text-sm text-gray-400 mb-6">Pick files and choose between 10-Min P2P stream or 1-Month Temporary Link.</p>
                             <span class="inline-flex items-center gap-2 text-brand-500 font-semibold text-sm group-hover:translate-x-1 transition-transform">
                                 Start Sending <i class="fas fa-arrow-right text-xs"></i>
                             </span>
                         </div>
 
-                        <!-- RECEIVE CARD -->
-                        <div onclick="UI.goRecv()" role="button" tabindex="0" class="glass-panel p-8 rounded-2xl text-left cursor-pointer hover:border-brand-500/60 transition-all group hover:-translate-y-1 relative overflow-hidden">
-                            <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-brand-500/5 rounded-full blur-2xl group-hover:bg-brand-500/15 transition-all"></div>
+                        <div onclick="UI.goRecv()" role="button" tabindex="0" class="glass-panel p-8 rounded-3xl text-left cursor-pointer hover:border-brand-500/60 transition-all group hover:-translate-y-1 relative overflow-hidden">
                             <div class="w-14 h-14 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-500 mb-6 group-hover:scale-110 transition-transform">
                                 <i class="fas fa-qrcode text-2xl"></i>
                             </div>
                             <h2 class="text-2xl font-bold mb-2">Receive Files</h2>
-                            <p class="text-sm text-gray-400 mb-6">Enter a 6-character transfer code or scan QR code with your camera.</p>
+                            <p class="text-sm text-gray-400 mb-6">Enter a 6-character transfer code or scan QR code to download files.</p>
                             <span class="inline-flex items-center gap-2 text-brand-500 font-semibold text-sm group-hover:translate-x-1 transition-transform">
                                 Receive Files <i class="fas fa-arrow-right text-xs"></i>
                             </span>
                         </div>
                     </div>
-
-                    <!-- SECURITY BADGE FOOTER -->
-                    <div class="flex items-center gap-6 text-xs text-gray-500 pt-4">
-                        <span class="flex items-center gap-2"><i class="fas fa-shield-halved text-brand-500"></i> Encrypted WebRTC</span>
-                        <span class="flex items-center gap-2"><i class="fas fa-bolt text-brand-500"></i> Smart Compression</span>
-                        <span class="flex items-center gap-2"><i class="fas fa-trash-can text-brand-500"></i> Single-Use Code</span>
-                    </div>
                 </section>
 
-                <!-- SCREEN: SENDER FILE SELECTION & PREPARATION -->
+                <!-- SENDER FILE & MODE SELECTION -->
                 <section id="scr-send" class="view-screen hidden flex-col items-center space-y-6 w-full max-w-2xl mx-auto">
                     <div class="flex items-center justify-between w-full">
                         <button onclick="UI.goHome()" class="text-xs font-semibold text-gray-400 hover:text-white flex items-center gap-2">
@@ -220,77 +218,95 @@
                             <div class="w-16 h-16 rounded-full bg-brand-500/10 text-brand-500 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
                                 <i class="fas fa-cloud-arrow-up text-2xl"></i>
                             </div>
-                            <p class="font-medium text-lg mb-1">Drag and drop files here</p>
-                            <p class="text-xs text-gray-400 mb-4">or click to browse your computer or mobile device</p>
-
-                            <div class="flex items-center justify-center gap-3">
-                                <label for="folderInput" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs font-medium cursor-pointer text-gray-300 transition-colors z-20" onclick="event.stopPropagation()">
-                                    <i class="fas fa-folder text-brand-500"></i> Add Folder
-                                    <input type="file" id="folderInput" webkitdirectory directory multiple class="hidden">
-                                </label>
-                            </div>
+                            <p class="font-medium text-lg mb-1">Drop your files here</p>
+                            <p class="text-xs text-gray-400 mb-4">or click to browse from device</p>
+                            <label for="folderInput" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs font-medium cursor-pointer text-gray-300 transition-colors z-20" onclick="event.stopPropagation()">
+                                <i class="fas fa-folder text-brand-500"></i> Add Folder
+                                <input type="file" id="folderInput" webkitdirectory directory multiple class="hidden">
+                            </label>
                         </div>
 
-                        <!-- SELECTED FILES QUEUE LIST -->
+                        <!-- SELECTED FILES QUEUE -->
                         <div id="fileQueueWrapper" class="hidden space-y-3">
                             <div class="flex items-center justify-between text-xs font-medium text-gray-400 px-1">
                                 <span>Selected Files (<span id="fileCountText">0</span>)</span>
                                 <span id="fileTotalSizeText">0 MB</span>
                             </div>
+                            <div id="fileQueue" class="max-h-48 overflow-y-auto space-y-2 pr-1"></div>
+                        </div>
 
-                            <div id="fileQueue" class="max-h-56 overflow-y-auto space-y-2 pr-1">
-                                <!-- File Items Injected via JS -->
-                            </div>
+                        <!-- TRANSFER VALIDITY SELECTION (EXACTLY TWO CHOICES) -->
+                        <div class="pt-4 border-t border-gray-800 space-y-3">
+                            <label class="block text-xs font-extrabold uppercase tracking-widest text-brand-500">Transfer Validity</label>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <!-- 10 MINUTES CARD -->
+                                <div id="modeCard10Min" onclick="UI.selectMode('10min')" class="mode-card glass-panel p-4 rounded-2xl cursor-pointer selected text-left space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs font-extrabold font-mono text-brand-500">⚡ 10 MINUTES</span>
+                                        <span class="w-2 h-2 rounded-full bg-brand-500"></span>
+                                    </div>
+                                    <h4 class="font-bold text-sm">P2P Transfer</h4>
+                                    <p class="text-[11px] text-gray-400 leading-snug">Direct WebRTC transfer between devices. Sender stays available online while receiving.</p>
+                                </div>
 
-                            <!-- COMPRESSION SUMMARY BANNER -->
-                            <div id="compressionSummary" class="p-3 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-between text-xs text-brand-500 font-medium">
-                                <span class="flex items-center gap-2"><i class="fas fa-bolt"></i> <span id="compRatioText">Smart Compression Ready</span></span>
-                                <span id="compSavingsText" class="font-mono">--</span>
+                                <!-- 1 MONTH CARD -->
+                                <div id="modeCard1Month" onclick="UI.selectMode('1month')" class="mode-card glass-panel p-4 rounded-2xl cursor-pointer text-left space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs font-extrabold font-mono text-brand-500">📅 1 MONTH</span>
+                                        <span class="w-2 h-2 rounded-full bg-amber-600"></span>
+                                    </div>
+                                    <h4 class="font-bold text-sm">Temporary Link</h4>
+                                    <p class="text-[11px] text-gray-400 leading-snug">Stored temporarily. Sender can close browser and turn off laptop anytime.</p>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- CUSTOM CODE INPUT TOGGLE -->
+                        <!-- CUSTOM CODE TOGGLE -->
                         <div class="pt-2 border-t border-gray-800 space-y-3">
                             <div class="flex items-center justify-between">
-                                <span class="text-xs font-medium text-gray-400">Code Preference</span>
+                                <span class="text-xs font-medium text-gray-400">Custom Transfer Code</span>
                                 <button type="button" onclick="UI.toggleCustomCode()" id="btnCustomToggle" class="text-xs text-brand-500 font-semibold hover:underline">Use Custom Code</button>
                             </div>
-
                             <div id="customCodeInputWrap" class="hidden">
-                                <input type="text" id="customCodeInput" maxlength="6" placeholder="Custom 6-CHAR code (e.g. SHARE1)" class="w-full bg-black/40 border border-gray-700 rounded-xl px-4 py-2.5 text-center font-mono text-brand-500 uppercase tracking-widest focus:border-brand-500 outline-none text-sm">
-                                <p class="text-[11px] text-gray-500 mt-1">Must be 6 unambiguous alphanumeric characters.</p>
+                                <input type="text" id="customCodeInput" maxlength="6" placeholder="CUSTOM 6-CHAR CODE" class="w-full bg-black/40 border border-gray-700 rounded-xl px-4 py-2.5 text-center font-mono text-brand-500 uppercase tracking-widest focus:border-brand-500 outline-none text-sm">
                             </div>
                         </div>
 
                         <button id="btnCreateLink" disabled onclick="Transfer.initiateSender()" class="w-full py-4 rounded-xl bg-brand-500 hover:bg-brand-400 text-darkbg font-bold text-base transition-all shadow-lg shadow-brand-500/20 disabled:opacity-40 disabled:cursor-not-allowed">
-                            Generate Transfer Link
+                            Create Transfer
                         </button>
                     </div>
                 </section>
 
-                <!-- SCREEN: SENDER CODE & QR DISPLAY -->
+                <!-- CODE & DISPLAY SCREEN (10-MIN OR 1-MONTH) -->
                 <section id="scr-code" class="view-screen hidden flex-col items-center space-y-6 w-full max-w-lg mx-auto text-center">
                     <div class="glass-panel p-8 rounded-3xl space-y-6 w-full">
                         <div class="space-y-1">
-                            <span class="text-xs font-mono text-brand-500 uppercase tracking-widest">Ready to Transfer</span>
-                            <h2 class="text-2xl font-bold">Share this transfer code</h2>
+                            <span id="codeHeaderBadge" class="text-xs font-mono text-brand-500 uppercase tracking-widest">P2P TRANSFER</span>
+                            <h2 class="text-2xl font-bold">Your transfer code</h2>
                         </div>
 
-                        <!-- BIG CODE BOX -->
+                        <!-- CODE BOX -->
                         <div class="p-6 rounded-2xl bg-black/40 border border-brand-500/30 flex flex-col items-center justify-center space-y-2">
                             <div id="displayCode" class="text-4xl md:text-5xl font-black code-char text-brand-500 tracking-widest">------</div>
-                            <div class="flex items-center gap-2 text-xs text-gray-400">
+                            <div id="codeExpiryText" class="flex items-center gap-2 text-xs text-gray-400">
                                 <i class="fas fa-clock text-brand-500"></i> Expires in <span id="codeTimer" class="font-mono font-bold text-white">10:00</span>
                             </div>
                         </div>
 
-                        <!-- QR CODE DISPLAY CONTAINER -->
-                        <div class="flex flex-col items-center space-y-3">
-                            <div id="qrCodeContainer" class="p-4 bg-white rounded-2xl shadow-xl inline-block"></div>
-                            <p class="text-xs text-gray-400">Scan code with mobile camera or DropLink receiver</p>
+                        <!-- EXPLICIT CLOSE BROWSER NOTICE FOR 1-MONTH -->
+                        <div id="offlineNotice" class="hidden p-4 rounded-2xl bg-brand-500/10 border border-brand-500/30 text-left text-xs space-y-1">
+                            <span class="font-bold text-brand-500 flex items-center gap-1.5"><i class="fas fa-circle-check"></i> You can close DropLink now</span>
+                            <p class="text-gray-300">Your file is stored securely until it is downloaded or expires on <strong id="monthExpiryDate" class="text-white">--</strong>. The receiver can download even if you are offline.</p>
                         </div>
 
-                        <!-- ACTION BUTTONS -->
+                        <!-- QR CODE DISPLAY -->
+                        <div class="flex flex-col items-center space-y-3">
+                            <div id="qrCodeContainer" class="p-4 bg-white rounded-2xl shadow-xl inline-block"></div>
+                            <p class="text-xs text-gray-400">Scan with camera or DropLink receiver</p>
+                        </div>
+
                         <div class="grid grid-cols-2 gap-3">
                             <button onclick="UI.copyCode()" class="py-3 px-4 rounded-xl glass-panel hover:bg-gray-800 text-xs font-semibold flex items-center justify-center gap-2">
                                 <i class="fas fa-copy text-brand-500"></i> Copy Code
@@ -300,18 +316,18 @@
                             </button>
                         </div>
 
-                        <div class="pt-4 border-t border-gray-800 flex items-center justify-center gap-3 text-xs text-gray-400">
+                        <div id="waitingStateNotice" class="pt-2 flex items-center justify-center gap-3 text-xs text-gray-400">
                             <span class="w-2.5 h-2.5 rounded-full bg-brand-500 animate-ping"></span>
-                            Waiting for receiver to connect...
+                            Waiting for receiver...
                         </div>
 
-                        <button onclick="Transfer.cancel()" class="w-full py-2.5 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs font-semibold transition-colors">
+                        <button onclick="Transfer.cancel()" id="btnDeleteOrCancel" class="w-full py-2.5 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs font-semibold transition-colors">
                             Cancel Transfer
                         </button>
                     </div>
                 </section>
 
-                <!-- SCREEN: RECEIVER CODE INPUT -->
+                <!-- RECEIVER CODE INPUT -->
                 <section id="scr-recv" class="view-screen hidden flex-col items-center space-y-6 w-full max-w-lg mx-auto">
                     <div class="flex items-center justify-start w-full">
                         <button onclick="UI.goHome()" class="text-xs font-semibold text-gray-400 hover:text-white flex items-center gap-2">
@@ -326,14 +342,14 @@
 
                         <div>
                             <h2 class="text-2xl font-bold">Enter Transfer Code</h2>
-                            <p class="text-xs text-gray-400 mt-1">Enter the 6-character code provided by the sender</p>
+                            <p class="text-xs text-gray-400 mt-1">Enter 6-character code for 10-Min P2P or 1-Month Link</p>
                         </div>
 
                         <div class="space-y-4">
                             <input type="text" id="codeInput" maxlength="6" autocomplete="off" spellcheck="false" placeholder="ABC123" class="w-full py-4 text-center text-3xl font-bold font-mono tracking-widest uppercase bg-black/40 border-2 border-gray-700 rounded-2xl text-brand-500 focus:border-brand-500 outline-none transition-all">
 
                             <button onclick="Transfer.connectAsReceiver()" class="w-full py-4 rounded-xl bg-brand-500 hover:bg-brand-400 text-darkbg font-bold text-base transition-all shadow-lg shadow-brand-500/20">
-                                Connect & Download
+                                Connect / Download
                             </button>
 
                             <div class="relative flex py-2 items-center">
@@ -343,13 +359,13 @@
                             </div>
 
                             <button onclick="QRScanner.open()" class="w-full py-3 rounded-xl glass-panel hover:bg-gray-800 text-sm font-semibold flex items-center justify-center gap-2">
-                                <i class="fas fa-camera text-brand-500"></i> Scan QR Code with Camera
+                                <i class="fas fa-camera text-brand-500"></i> Scan QR Code
                             </button>
                         </div>
                     </div>
                 </section>
 
-                <!-- MODAL / SCREEN: RECEIVER CONFIRMATION MODAL -->
+                <!-- RECEIVER CONFIRMATION MODAL -->
                 <div id="confirmModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
                     <div class="glass-panel p-8 rounded-3xl max-w-md w-full space-y-6 text-center animate-in fade-in zoom-in duration-200">
                         <div class="w-16 h-16 rounded-full bg-brand-500/10 text-brand-500 flex items-center justify-center mx-auto">
@@ -357,28 +373,30 @@
                         </div>
 
                         <div>
-                            <span class="text-xs font-mono text-brand-500 uppercase tracking-widest">Incoming Transfer Request</span>
-                            <h3 class="text-2xl font-bold mt-1">Accept files from peer?</h3>
+                            <span id="confirmModeBadge" class="text-xs font-mono text-brand-500 uppercase tracking-widest">TRANSFER FOUND</span>
+                            <h3 class="text-2xl font-bold mt-1">Incoming Transfer</h3>
                         </div>
 
                         <div class="bg-black/40 border border-gray-800 p-4 rounded-2xl text-left space-y-2 text-xs">
-                            <div class="flex justify-between text-gray-400">
+                            <div id="confSenderDeviceRow" class="flex justify-between text-gray-400">
                                 <span>Sender Device:</span>
                                 <strong id="confSenderDevice" class="text-white font-mono">Chrome on macOS</strong>
                             </div>
                             <div class="flex justify-between text-gray-400">
-                                <span>Files Count:</span>
-                                <strong id="confFileCount" class="text-white">3 files</strong>
+                                <span>Transfer Mode:</span>
+                                <strong id="confModeText" class="text-brand-500 font-mono">10 MINUTES P2P</strong>
                             </div>
                             <div class="flex justify-between text-gray-400">
                                 <span>Total Size:</span>
                                 <strong id="confTotalSize" class="text-white">124.5 MB</strong>
                             </div>
+                            <div id="confExpiryRow" class="hidden flex justify-between text-gray-400">
+                                <span>Expires On:</span>
+                                <strong id="confExpiryDate" class="text-white">12 Sept 2026</strong>
+                            </div>
                             <div class="pt-2 border-t border-gray-800">
                                 <span class="text-gray-500 block mb-1">Contents:</span>
-                                <ul id="confFileList" class="max-h-28 overflow-y-auto space-y-1 font-mono text-[11px] text-gray-300">
-                                    <!-- File preview items -->
-                                </ul>
+                                <ul id="confFileList" class="max-h-28 overflow-y-auto space-y-1 font-mono text-[11px] text-gray-300"></ul>
                             </div>
                         </div>
 
@@ -387,17 +405,16 @@
                                 Decline
                             </button>
                             <button onclick="Transfer.acceptTransfer()" class="py-3 rounded-xl bg-brand-500 hover:bg-brand-400 text-darkbg text-xs font-bold transition-all shadow-lg shadow-brand-500/20">
-                                Accept & Receive
+                                Accept & Download
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- SCREEN: LIVE TRANSFER DASHBOARD -->
+                <!-- LIVE TRANSFER DASHBOARD (FOR 10-MIN P2P) -->
                 <section id="scr-transfer" class="view-screen hidden flex-col items-center space-y-6 w-full max-w-2xl mx-auto">
                     <div class="glass-panel p-8 rounded-3xl space-y-8 w-full">
 
-                        <!-- HEADER STATS -->
                         <div class="flex items-center justify-between border-b border-gray-800 pb-6">
                             <div>
                                 <span id="transferRoleBadge" class="text-xs font-mono text-brand-500 uppercase tracking-widest">SENDING FILES</span>
@@ -410,7 +427,6 @@
                             </div>
                         </div>
 
-                        <!-- OVERALL PROGRESS BAR & PERCENTAGE -->
                         <div class="space-y-3">
                             <div class="flex justify-between items-baseline">
                                 <span class="text-4xl font-black font-mono text-brand-500" id="overallPercent">0%</span>
@@ -426,16 +442,12 @@
 
                             <div class="flex justify-between text-xs text-gray-400 font-mono">
                                 <span id="transferredBytesText">0 MB / 0 MB</span>
-                                <span id="compressionSavingsBadge" class="text-brand-500"></span>
                             </div>
                         </div>
 
-                        <!-- PER-FILE TRANSFER LIST -->
                         <div class="space-y-3">
                             <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">File Progress</h3>
-                            <div id="transferFileList" class="max-h-60 overflow-y-auto space-y-2 pr-1">
-                                <!-- File Progress Cards dynamically generated -->
-                            </div>
+                            <div id="transferFileList" class="max-h-60 overflow-y-auto space-y-2 pr-1"></div>
                         </div>
 
                         <button onclick="Transfer.cancel()" class="w-full py-3 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs font-semibold transition-colors">
@@ -444,33 +456,29 @@
                     </div>
                 </section>
 
-                <!-- SCREEN: COMPLETION SUMMARY -->
+                <!-- COMPLETION SCREEN -->
                 <section id="scr-complete" class="view-screen hidden flex-col items-center space-y-6 w-full max-w-lg mx-auto text-center">
                     <div class="glass-panel p-8 rounded-3xl space-y-6 w-full">
-                        <div class="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto text-3xl animate-bounce">
+                        <div class="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto text-3xl">
                             <i class="fas fa-check"></i>
                         </div>
 
                         <div>
                             <h2 class="text-3xl font-black">Transfer Complete!</h2>
-                            <p id="completeSummaryText" class="text-sm text-gray-400 mt-1">Transferred 3 files (124 MB) in 12s</p>
+                            <p id="completeSummaryText" class="text-sm text-gray-400 mt-1">Transferred 1 file(s)</p>
                         </div>
 
-                        <!-- RECEIVER FILE DOWNLOAD QUEUE -->
                         <div id="recvCompletedListWrap" class="hidden space-y-3 text-left">
                             <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Received Files</h3>
-                            <div id="recvCompletedList" class="max-h-48 overflow-y-auto space-y-2">
-                                <!-- Download items -->
-                            </div>
-
+                            <div id="recvCompletedList" class="max-h-48 overflow-y-auto space-y-2"></div>
                             <button id="btnDownloadAllZip" onclick="Transfer.downloadAllZip()" class="w-full py-3 rounded-xl bg-brand-500 hover:bg-brand-400 text-darkbg font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20">
-                                <i class="fas fa-file-zipper"></i> Download All as ZIP
+                                <i class="fas fa-file-zipper"></i> Download All
                             </button>
                         </div>
 
                         <!-- CODE DESTRUCTION NOTICE -->
                         <div class="p-3 rounded-xl bg-black/40 border border-gray-800 text-xs text-gray-400 flex items-center justify-center gap-2">
-                            <i class="fas fa-lock text-brand-500"></i> Transfer code destroyed & WebRTC session closed
+                            <i class="fas fa-lock text-brand-500"></i> Transfer code destroyed & link invalidated
                         </div>
 
                         <button onclick="UI.goHome()" class="w-full py-3 rounded-xl glass-panel hover:bg-gray-800 text-sm font-semibold">
@@ -487,7 +495,7 @@
             <div class="flex items-center gap-2">
                 <span>DropLink P2P &copy; 2026</span>
                 <span>•</span>
-                <span>Direct Browser Transfer</span>
+                <span>Send. Connect. Done.</span>
             </div>
             <div class="flex items-center gap-6">
                 <button onclick="UI.showModal('privacyModal')" class="hover:text-gray-300">Privacy Policy</button>
@@ -496,7 +504,21 @@
         </footer>
     </div>
 
-    <!-- QR CAMERA SCANNER OVERLAY MODAL -->
+    <!-- MODAL: MY TRANSFERS DASHBOARD -->
+    <div id="myTransfersModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-3xl max-w-xl w-full space-y-6 relative max-h-[85vh] flex flex-col">
+            <button onclick="UI.closeModal('myTransfersModal')" class="absolute top-6 right-6 text-gray-400 hover:text-white">
+                <i class="fas fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-2xl font-bold flex items-center gap-2"><i class="fas fa-list-check text-brand-500"></i> My Active Transfers</h3>
+            
+            <div id="myTransfersList" class="flex-grow overflow-y-auto space-y-3 pr-1 text-xs">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- QR CAMERA SCANNER MODAL -->
     <div id="qrScannerModal" class="fixed inset-0 bg-black/90 z-50 hidden flex flex-col items-center justify-center p-4">
         <div class="w-full max-w-md glass-panel p-6 rounded-3xl relative flex flex-col items-center">
             <button onclick="QRScanner.close()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-lg">
@@ -504,116 +526,73 @@
             </button>
             <h3 class="text-lg font-bold mb-4">Scan DropLink QR Code</h3>
             <div id="reader" class="w-full rounded-2xl overflow-hidden border border-gray-700 bg-black"></div>
-            <p class="text-xs text-gray-400 mt-4 text-center">Center the QR code inside the frame to scan automatically.</p>
         </div>
     </div>
 
-    <!-- MODAL: HOW IT WORKS -->
+    <!-- MODALS: HOW IT WORKS, SECURITY, PRIVACY, SETTINGS -->
     <div id="howItWorksModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="glass-panel p-8 rounded-3xl max-w-lg w-full space-y-6 relative">
-            <button onclick="UI.closeModal('howItWorksModal')" class="absolute top-6 right-6 text-gray-400 hover:text-white">
-                <i class="fas fa-xmark text-lg"></i>
-            </button>
+            <button onclick="UI.closeModal('howItWorksModal')" class="absolute top-6 right-6 text-gray-400 hover:text-white"><i class="fas fa-xmark"></i></button>
             <h3 class="text-2xl font-bold">How DropLink Works</h3>
             <div class="space-y-4 text-xs text-gray-300 leading-relaxed">
-                <div class="flex gap-4">
-                    <div class="w-8 h-8 rounded-full bg-brand-500/10 text-brand-500 font-bold flex items-center justify-center flex-shrink-0">1</div>
-                    <div>
-                        <h4 class="font-bold text-sm text-white mb-0.5">Select Files</h4>
-                        <p class="text-gray-400">Choose files or folders. Smart compression compresses code and document files automatically before transfer.</p>
-                    </div>
+                <p>DropLink provides two clear transfer modes depending on your needs:</p>
+                <div class="p-3 rounded-xl bg-black/40 border border-gray-800">
+                    <strong class="text-brand-500 block mb-1">⚡ 10 MINUTES (P2P Transfer)</strong>
+                    Direct WebRTC connection between devices. Fast, zero-server payload, ideal when sender & receiver are online together.
                 </div>
-                <div class="flex gap-4">
-                    <div class="w-8 h-8 rounded-full bg-brand-500/10 text-brand-500 font-bold flex items-center justify-center flex-shrink-0">2</div>
-                    <div>
-                        <h4 class="font-bold text-sm text-white mb-0.5">Share 6-Character Code</h4>
-                        <p class="text-gray-400">DropLink generates a secure 10-minute temporary transfer code and QR code.</p>
-                    </div>
-                </div>
-                <div class="flex gap-4">
-                    <div class="w-8 h-8 rounded-full bg-brand-500/10 text-brand-500 font-bold flex items-center justify-center flex-shrink-0">3</div>
-                    <div>
-                        <h4 class="font-bold text-sm text-white mb-0.5">Direct P2P Stream</h4>
-                        <p class="text-gray-400">Files are chunked, SHA-256 hashed, and streamed directly from browser to browser via encrypted WebRTC DataChannels.</p>
-                    </div>
+                <div class="p-3 rounded-xl bg-black/40 border border-gray-800">
+                    <strong class="text-brand-500 block mb-1">📅 1 MONTH (Temporary Link)</strong>
+                    Encrypted persistent storage. Sender can close browser and turn off laptop. Receiver can download anytime within 30 days.
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL: SECURITY -->
     <div id="securityModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="glass-panel p-8 rounded-3xl max-w-lg w-full space-y-6 relative">
-            <button onclick="UI.closeModal('securityModal')" class="absolute top-6 right-6 text-gray-400 hover:text-white">
-                <i class="fas fa-xmark text-lg"></i>
-            </button>
+            <button onclick="UI.closeModal('securityModal')" class="absolute top-6 right-6 text-gray-400 hover:text-white"><i class="fas fa-xmark"></i></button>
             <h3 class="text-2xl font-bold">Security Architecture</h3>
             <div class="space-y-3 text-xs text-gray-300 leading-relaxed">
-                <p>DropLink utilizes standard WebRTC technology with DTLS/SRTP encryption built into modern browsers.</p>
-                <div class="p-3 rounded-xl bg-black/40 border border-gray-800">
-                    <strong class="text-white block mb-1">Signaling vs Data:</strong>
-                    DropLink signaling servers coordinate initial IP negotiation. File payload data flows directly between peers and is never saved or stored on any server.
-                </div>
-                <div class="p-3 rounded-xl bg-black/40 border border-gray-800">
-                    <strong class="text-white block mb-1">SHA-256 Integrity Verification:</strong>
-                    Every file transferred has its cryptographic SHA-256 hash computed before and verified after transfer.
-                </div>
+                <p>10-Minute transfers use WebRTC DTLS/SRTP E2E encryption without cloud storage. 1-Month transfers use encrypted local persistent storage with strict single-use token deletion.</p>
             </div>
         </div>
     </div>
 
-    <!-- MODAL: PRIVACY -->
     <div id="privacyModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="glass-panel p-8 rounded-3xl max-w-lg w-full space-y-6 relative">
-            <button onclick="UI.closeModal('privacyModal')" class="absolute top-6 right-6 text-gray-400 hover:text-white">
-                <i class="fas fa-xmark text-lg"></i>
-            </button>
+            <button onclick="UI.closeModal('privacyModal')" class="absolute top-6 right-6 text-gray-400 hover:text-white"><i class="fas fa-xmark"></i></button>
             <h3 class="text-2xl font-bold">Privacy Policy</h3>
-            <p class="text-xs text-gray-300 leading-relaxed">
-                DropLink does not track users, log file transfers, or upload files to central server storage. Connections expire immediately upon transfer completion or cancellation.
-            </p>
+            <p class="text-xs text-gray-300 leading-relaxed">No tracking, no central payload logs, and all links expire automatically on download or deadline.</p>
         </div>
     </div>
 
-    <!-- MODAL: SETTINGS -->
     <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="glass-panel p-8 rounded-3xl max-w-md w-full space-y-6 relative">
-            <button onclick="UI.closeModal('settingsModal')" class="absolute top-6 right-6 text-gray-400 hover:text-white">
-                <i class="fas fa-xmark text-lg"></i>
-            </button>
+            <button onclick="UI.closeModal('settingsModal')" class="absolute top-6 right-6 text-gray-400 hover:text-white"><i class="fas fa-xmark"></i></button>
             <h3 class="text-xl font-bold">Preferences</h3>
             <div class="space-y-4 text-xs">
                 <div class="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-gray-800">
                     <div>
                         <span class="font-bold text-white block">Sound Effects</span>
-                        <span class="text-gray-500">Play subtle audio chimes on completion</span>
+                        <span class="text-gray-500">Audio feedback on complete</span>
                     </div>
                     <input type="checkbox" id="settingSound" checked onchange="SoundFX.enabled = this.checked" class="accent-brand-500 w-4 h-4">
-                </div>
-                <div class="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-gray-800">
-                    <div>
-                        <span class="font-bold text-white block">Auto-Download Files</span>
-                        <span class="text-gray-500">Automatically trigger browser download</span>
-                    </div>
-                    <input type="checkbox" id="settingAutoDL" checked class="accent-brand-500 w-4 h-4">
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- TOAST NOTIFICATION CONTAINER -->
     <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- APPLICATION JAVASCRIPT ENGINE -->
     <script>
     /**
      * DropLink Complete Application Engine
-     * P2P WebRTC Transfer, Smart Compression, Crypto SHA-256 Verification & UI State Manager
+     * Supports ⚡ 10-MIN P2P (WebRTC) and 📅 1-MONTH Persistent Store (IndexedDB)
      */
 
     // --- UTILITIES ---
     const Utils = {
-        CHUNK_SIZE: 32768, // 32KB chunk for reliable RTCDataChannel performance
+        CHUNK_SIZE: 32768,
         UNAMBIGUOUS_CHARS: '34679ACDEFGHJKLMNPQRTUVWXY',
 
         genCode() {
@@ -623,7 +602,7 @@
         },
 
         fmtSize(bytes) {
-            if (bytes === 0) return '0 B';
+            if (!bytes || bytes === 0) return '0 B';
             const k = 1024;
             const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -650,7 +629,7 @@
 
         getDeviceInfo() {
             const ua = navigator.userAgent;
-            let os = 'Unknown OS';
+            let os = 'OS';
             if (ua.includes('Mac')) os = 'macOS';
             else if (ua.includes('Win')) os = 'Windows';
             else if (ua.includes('Linux')) os = 'Linux';
@@ -674,53 +653,98 @@
                 xls: 'fa-file-excel text-emerald-400', xlsx: 'fa-file-excel text-emerald-400',
                 jpg: 'fa-file-image text-purple-400', jpeg: 'fa-file-image text-purple-400', png: 'fa-file-image text-purple-400', gif: 'fa-file-image text-purple-400', webp: 'fa-file-image text-purple-400',
                 mp4: 'fa-file-video text-pink-400', mov: 'fa-file-video text-pink-400', mkv: 'fa-file-video text-pink-400',
-                zip: 'fa-file-zipper text-amber-400', rar: 'fa-file-zipper text-amber-400', '7z': 'fa-file-zipper text-amber-400',
-                js: 'fa-file-code text-yellow-400', ts: 'fa-file-code text-blue-400', html: 'fa-file-code text-orange-400', css: 'fa-file-code text-indigo-400', json: 'fa-file-code text-amber-300'
+                zip: 'fa-file-zipper text-amber-400', rar: 'fa-file-zipper text-amber-400', '7z': 'fa-file-zipper text-amber-400'
             };
             return map[ext] || 'fa-file text-gray-400';
         }
     };
 
-    // --- SYNTHESIZER AUDIO FEEDBACK ---
+    // --- INDEXEDDB STORAGE ENGINE FOR 1-MONTH TRANSFERS ---
+    const DB = {
+        dbName: 'DropLinkDB',
+        version: 1,
+
+        open() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(this.dbName, this.version);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('transfers')) {
+                        db.createObjectStore('transfers', { keyPath: 'code' });
+                    }
+                };
+                req.onsuccess = (e) => resolve(e.target.result);
+                req.onerror = (e) => reject(e.target.error);
+            });
+        },
+
+        async saveTransfer(record) {
+            const db = await this.open();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('transfers', 'readwrite');
+                const store = tx.objectStore('transfers');
+                store.put(record);
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        },
+
+        async getTransfer(code) {
+            const db = await this.open();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('transfers', 'readonly');
+                const store = tx.objectStore('transfers');
+                const req = store.get(code);
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = (e) => reject(e.target.error);
+            });
+        },
+
+        async deleteTransfer(code) {
+            const db = await this.open();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('transfers', 'readwrite');
+                const store = tx.objectStore('transfers');
+                store.delete(code);
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        },
+
+        async getAllTransfers() {
+            const db = await this.open();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('transfers', 'readonly');
+                const store = tx.objectStore('transfers');
+                const req = store.getAll();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = (e) => reject(e.target.error);
+            });
+        }
+    };
+
+    // --- AUDIO SYNTHESIZER ---
     const SoundFX = {
         enabled: true,
         ctx: null,
 
-        init() {
-            if (!this.ctx && typeof AudioContext !== 'undefined') {
-                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-        },
-
-        playTone(freq, type, duration) {
+        playSuccess() {
             if (!this.enabled) return;
             try {
-                this.init();
-                if (!this.ctx) return;
+                if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
-                osc.type = type;
-                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, this.ctx.currentTime);
                 gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start();
-                osc.stop(this.ctx.currentTime + duration);
+                gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.3);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.3);
             } catch(e) {}
-        },
-
-        playSuccess() {
-            this.playTone(523.25, 'sine', 0.15); // C5
-            setTimeout(() => this.playTone(659.25, 'sine', 0.3), 120); // E5
-        },
-
-        playError() {
-            this.playTone(220, 'sawtooth', 0.25);
         }
     };
 
-    // --- THEME MANAGER ---
+    // --- THEME ENGINE ---
     const Theme = {
         init() {
             const saved = localStorage.getItem('dl_theme') || 'dark';
@@ -748,50 +772,11 @@
         }
     };
 
-    // --- SMART COMPRESSION MANAGER ---
-    const SmartCompressor = {
-        NON_COMPRESSIBLE_EXTS: new Set(['jpg','jpeg','png','webp','gif','mp4','mov','mkv','avi','mp3','flac','zip','rar','7z','gz','pdf','apk','dmg','iso']),
-
-        isCompressible(file) {
-            const ext = file.name.split('.').pop().toLowerCase();
-            if (this.NON_COMPRESSIBLE_EXTS.has(ext)) return false;
-            if (file.size < 512 || file.size > 200 * 1024 * 1024) return false; // Limit gzip overhead to <= 200MB files
-            return true;
-        },
-
-        async compressFile(file) {
-            if (!this.isCompressible(file) || typeof CompressionStream === 'undefined') {
-                const buffer = await file.arrayBuffer();
-                const sha256 = await Utils.computeSHA256(buffer);
-                return { compressed: false, data: new Uint8Array(buffer), sendSize: file.size, origSize: file.size, sha256 };
-            }
-            try {
-                const cs = new CompressionStream('gzip');
-                const stream = file.stream().pipeThrough(cs);
-                const compressedBuf = await new Response(stream).arrayBuffer();
-                if (compressedBuf.byteLength < file.size * 0.95) {
-                    const sha256 = await Utils.computeSHA256(compressedBuf);
-                    return { compressed: true, data: new Uint8Array(compressedBuf), sendSize: compressedBuf.byteLength, origSize: file.size, sha256 };
-                }
-            } catch(e) {}
-            const buffer = await file.arrayBuffer();
-            const sha256 = await Utils.computeSHA256(buffer);
-            return { compressed: false, data: new Uint8Array(buffer), sendSize: file.size, origSize: file.size, sha256 };
-        },
-
-        async decompress(uint8Array) {
-            if (typeof DecompressionStream === 'undefined') return uint8Array.buffer;
-            const ds = new DecompressionStream('gzip');
-            const blob = new Blob([uint8Array]);
-            const stream = blob.stream().pipeThrough(ds);
-            return await new Response(stream).arrayBuffer();
-        }
-    };
-
-    // --- UI MANAGER ---
+    // --- UI CONTROLLER ---
     const UI = {
         currentScreen: 'scr-landing',
         selectedFiles: [],
+        selectedMode: '10min', // '10min' or '1month'
 
         showToast(msg, type = 'info') {
             const container = document.getElementById('toastContainer');
@@ -823,13 +808,16 @@
             this.switchScreen('scr-landing');
         },
 
-        goSend() {
-            this.switchScreen('scr-send');
-        },
-
+        goSend() { this.switchScreen('scr-send'); },
         goRecv() {
             this.switchScreen('scr-recv');
             setTimeout(() => document.getElementById('codeInput').focus(), 150);
+        },
+
+        selectMode(m) {
+            this.selectedMode = m;
+            document.getElementById('modeCard10Min').classList.toggle('selected', m === '10min');
+            document.getElementById('modeCard1Month').classList.toggle('selected', m === '1month');
         },
 
         toggleCustomCode() {
@@ -860,11 +848,8 @@
             document.getElementById('btnCreateLink').disabled = false;
 
             let totalBytes = 0;
-            let compressibleCount = 0;
-
             queue.innerHTML = this.selectedFiles.map((file, idx) => {
                 totalBytes += file.size;
-                if (SmartCompressor.isCompressible(file)) compressibleCount++;
                 return `
                 <div class="flex items-center justify-between p-2.5 rounded-xl bg-black/30 border border-gray-800 text-xs">
                     <div class="flex items-center gap-2.5 overflow-hidden pr-2">
@@ -880,7 +865,6 @@
 
             countText.textContent = this.selectedFiles.length;
             sizeText.textContent = Utils.fmtSize(totalBytes);
-            document.getElementById('compSavingsText').textContent = compressibleCount > 0 ? `${compressibleCount} files compressible` : 'Pre-optimized';
         },
 
         removeFile(idx) {
@@ -896,10 +880,40 @@
         shareTransfer() {
             const code = document.getElementById('displayCode').textContent;
             if (navigator.share) {
-                navigator.share({ title: 'DropLink Transfer', text: `Receive files on DropLink using transfer code: ${code}` });
-            } else {
-                this.copyCode();
+                navigator.share({ title: 'DropLink Transfer', text: `Receive files on DropLink using code: ${code}` });
+            } else { this.copyCode(); }
+        },
+
+        async showMyTransfersModal() {
+            const list = document.getElementById('myTransfersList');
+            list.innerHTML = '<div class="text-center py-4 text-gray-500">Loading active transfers...</div>';
+            this.showModal('myTransfersModal');
+
+            const transfers = await DB.getAllTransfers();
+            if (transfers.length === 0) {
+                list.innerHTML = '<div class="text-center py-6 text-gray-400">No active 1-Month transfers found.</div>';
+                return;
             }
+
+            const now = Date.now();
+            list.innerHTML = transfers.map(t => {
+                const expired = now > t.expiresAt || t.status === 'completed';
+                const expDate = new Date(t.expiresAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+                return `
+                <div class="p-4 rounded-2xl bg-black/40 border border-gray-800 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-brand-500 font-mono tracking-widest text-sm">${t.code}</span>
+                        <span class="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full ${expired ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}">${expired ? t.status : 'Active'}</span>
+                    </div>
+                    <div class="text-gray-300 font-mono text-[11px]">
+                        ${t.files.map(f => f.name).join(', ')} (${Utils.fmtSize(t.totalSize)})
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] text-gray-500 pt-2 border-t border-gray-800/60">
+                        <span>Expires: ${expDate}</span>
+                        <button onclick="Transfer.deletePersistentTransfer('${t.code}')" class="text-red-400 hover:underline">Delete</button>
+                    </div>
+                </div>`;
+            }).join('');
         },
 
         showModal(id) { document.getElementById(id).classList.remove('hidden'); },
@@ -909,47 +923,41 @@
     // --- QR SCANNER MANAGER ---
     const QRScanner = {
         html5Qrcode: null,
-
         open() {
             document.getElementById('qrScannerModal').classList.remove('hidden');
             if (!this.html5Qrcode) this.html5Qrcode = new Html5Qrcode("reader");
-
-            this.html5Qrcode.start(
-                { facingMode: "environment" },
-                { fps: 10, qrbox: 220 },
-                (decodedText) => {
-                    const match = decodedText.match(/([34679ACDEFGHJKLMNPQRTUVWXY]{6})/i);
-                    const code = match ? match[1].toUpperCase() : (decodedText.length === 6 ? decodedText.toUpperCase() : null);
-                    if (code) {
-                        document.getElementById('codeInput').value = code;
-                        this.close();
-                        UI.showToast(`Scanned Code: ${code}`, 'success');
-                        Transfer.connectAsReceiver();
-                    }
-                },
-                () => {}
-            ).catch(err => {
-                UI.showToast('Camera access permission denied', 'error');
+            this.html5Qrcode.start({ facingMode: "environment" }, { fps: 10, qrbox: 220 }, (decodedText) => {
+                const match = decodedText.match(/([34679ACDEFGHJKLMNPQRTUVWXY]{6})/i);
+                const code = match ? match[1].toUpperCase() : (decodedText.length === 6 ? decodedText.toUpperCase() : null);
+                if (code) {
+                    document.getElementById('codeInput').value = code;
+                    this.close();
+                    UI.showToast(`Scanned Code: ${code}`, 'success');
+                    Transfer.connectAsReceiver();
+                }
+            }, () => {}).catch(() => {
+                UI.showToast('Camera permission denied', 'error');
                 this.close();
             });
         },
-
         close() {
             document.getElementById('qrScannerModal').classList.add('hidden');
             if (this.html5Qrcode) this.html5Qrcode.stop().catch(() => {});
         }
     };
 
-    // --- P2P TRANSFER CONTROLLER ---
+    // --- TRANSFER ENGINE ---
     const Transfer = {
         peer: null,
         conn: null,
-        role: null, // 'sender' or 'receiver'
+        role: null,
+        mode: '10min',
         code: '',
         timerIv: null,
         transferFiles: [],
         receivedFiles: [],
         stats: { totalBytes: 0, transferredBytes: 0, startTime: 0, lastBytes: 0, lastTime: 0 },
+        activePersistentRecord: null,
 
         cleanup() {
             if (this.timerIv) clearInterval(this.timerIv);
@@ -957,6 +965,7 @@
             if (this.peer) { try { this.peer.destroy(); } catch(e){} this.peer = null; }
             this.transferFiles = [];
             this.receivedFiles = [];
+            this.activePersistentRecord = null;
         },
 
         cancel() {
@@ -971,61 +980,117 @@
 
             this.code = useCustom ? customInput : Utils.genCode();
             this.role = 'sender';
+            this.mode = UI.selectedMode;
 
             UI.switchScreen('scr-code');
             document.getElementById('displayCode').textContent = this.code;
 
-            // Render QR Code
+            // Render QR
             const qrBox = document.getElementById('qrCodeContainer');
             qrBox.innerHTML = '';
             new QRCode(qrBox, { text: `droplink://${this.code}`, width: 160, height: 160, colorDark: "#08090e", colorLight: "#ffffff" });
 
-            // Start 10 min expiry timer
-            let secondsLeft = 600;
-            if (this.timerIv) clearInterval(this.timerIv);
-            this.timerIv = setInterval(() => {
-                secondsLeft--;
-                const m = Math.floor(secondsLeft / 60);
-                const s = secondsLeft % 60;
-                document.getElementById('codeTimer').textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-                if (secondsLeft <= 0) {
-                    clearInterval(this.timerIv);
-                    UI.showToast('Transfer code expired', 'error');
-                    Transfer.cancel();
+            if (this.mode === '10min') {
+                document.getElementById('codeHeaderBadge').textContent = 'P2P TRANSFER';
+                document.getElementById('codeExpiryText').classList.remove('hidden');
+                document.getElementById('offlineNotice').classList.add('hidden');
+                document.getElementById('waitingStateNotice').classList.remove('hidden');
+                document.getElementById('btnDeleteOrCancel').textContent = 'Cancel Transfer';
+
+                let secondsLeft = 600;
+                if (this.timerIv) clearInterval(this.timerIv);
+                this.timerIv = setInterval(() => {
+                    secondsLeft--;
+                    const m = Math.floor(secondsLeft / 60);
+                    const s = secondsLeft % 60;
+                    document.getElementById('codeTimer').textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                    if (secondsLeft <= 0) {
+                        clearInterval(this.timerIv);
+                        UI.showToast('Transfer code expired', 'error');
+                        Transfer.cancel();
+                    }
+                }, 1000);
+
+                // Setup WebRTC
+                this.peer = new Peer(`dl-${this.code}`, { debug: 0 });
+                this.peer.on('connection', (c) => { this.conn = c; this.setupConnectionHandlers(); });
+            } else {
+                // 1-MONTH TEMPORARY STORAGE
+                document.getElementById('codeHeaderBadge').textContent = 'TEMPORARY LINK';
+                document.getElementById('codeExpiryText').classList.add('hidden');
+                document.getElementById('offlineNotice').classList.remove('hidden');
+                document.getElementById('waitingStateNotice').classList.add('hidden');
+                document.getElementById('btnDeleteOrCancel').textContent = 'Delete Transfer';
+
+                const expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000);
+                const expDateStr = new Date(expiresAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+                document.getElementById('monthExpiryDate').textContent = expDateStr;
+
+                // Save files into IndexedDB persistent client storage
+                const fileRecords = [];
+                let totalSize = 0;
+                for (const f of UI.selectedFiles) {
+                    const buf = await f.arrayBuffer();
+                    const hash = await Utils.computeSHA256(buf);
+                    fileRecords.push({ name: f.name, size: f.size, type: f.type, blob: new Blob([buf]), sha256: hash });
+                    totalSize += f.size;
                 }
-            }, 1000);
 
-            // Initialize PeerJS
-            this.peer = new Peer(`dl-${this.code}`, { debug: 0 });
+                await DB.saveTransfer({
+                    code: this.code,
+                    mode: '1month',
+                    createdAt: Date.now(),
+                    expiresAt: expiresAt,
+                    files: fileRecords,
+                    totalSize: totalSize,
+                    status: 'available',
+                    downloadCount: 0
+                });
 
-            this.peer.on('open', () => {
-                // Sender code is registered on PeerJS signalling server
-            });
-
-            this.peer.on('connection', (c) => {
-                this.conn = c;
-                this.setupConnectionHandlers();
-            });
-
-            this.peer.on('error', (err) => {
-                if (err.type === 'unavailable-id') {
-                    UI.showToast('Code already active. Please pick another code.', 'error');
-                } else {
-                    UI.showToast(`Peer error: ${err.message}`, 'error');
-                }
-                UI.goSend();
-            });
+                UI.showToast('1-Month transfer created! You can close DropLink now.', 'success');
+            }
         },
 
-        connectAsReceiver() {
+        async connectAsReceiver() {
             const code = document.getElementById('codeInput').value.trim().toUpperCase();
             if (code.length !== 6) {
-                UI.showToast('Enter a valid 6-character transfer code', 'error');
+                UI.showToast('Enter a valid 6-character code', 'error');
                 return;
             }
 
             this.code = code;
             this.role = 'receiver';
+
+            // Check persistent store first
+            const localRecord = await DB.getTransfer(code);
+            if (localRecord) {
+                if (localRecord.status === 'completed' || localRecord.downloadCount > 0) {
+                    UI.showToast('This single-use transfer has already been completed.', 'error');
+                    return;
+                }
+                if (Date.now() > localRecord.expiresAt) {
+                    UI.showToast('This transfer link has expired.', 'error');
+                    await DB.deleteTransfer(code);
+                    return;
+                }
+
+                // Found active 1-Month Transfer
+                this.activePersistentRecord = localRecord;
+                this.mode = '1month';
+
+                document.getElementById('confModeText').textContent = '1-MONTH TEMPORARY LINK';
+                document.getElementById('confSenderDeviceRow').classList.add('hidden');
+                document.getElementById('confExpiryRow').classList.remove('hidden');
+                document.getElementById('confExpiryDate').textContent = new Date(localRecord.expiresAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+                document.getElementById('confTotalSize').textContent = Utils.fmtSize(localRecord.totalSize);
+                document.getElementById('confFileList').innerHTML = localRecord.files.map(f => `<li>${f.name} (${Utils.fmtSize(f.size)})</li>`).join('');
+
+                UI.showModal('confirmModal');
+                return;
+            }
+
+            // Fallback to 10-Min WebRTC connection
+            this.mode = '10min';
             this.peer = new Peer(undefined, { debug: 0 });
 
             this.peer.on('open', () => {
@@ -1033,7 +1098,7 @@
                 this.setupConnectionHandlers();
             });
 
-            this.peer.on('error', (err) => {
+            this.peer.on('error', () => {
                 UI.showToast('Transfer code not found or expired', 'error');
                 UI.goRecv();
             });
@@ -1041,8 +1106,7 @@
 
         setupConnectionHandlers() {
             this.conn.on('open', () => {
-                if (this.role === 'sender') {
-                    // Send offer proposal to receiver
+                if (this.role === 'sender' && this.mode === '10min') {
                     const filesMeta = UI.selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type }));
                     this.conn.send({
                         type: 'offer-proposal',
@@ -1055,17 +1119,17 @@
 
             this.conn.on('data', async (data) => {
                 if (data.type === 'offer-proposal' && this.role === 'receiver') {
-                    // Show confirmation modal to receiver
+                    document.getElementById('confSenderDeviceRow').classList.remove('hidden');
+                    document.getElementById('confExpiryRow').classList.add('hidden');
                     document.getElementById('confSenderDevice').textContent = data.senderDevice;
-                    document.getElementById('confFileCount').textContent = `${data.files.length} file(s)`;
+                    document.getElementById('confModeText').textContent = '10 MINUTES P2P';
                     document.getElementById('confTotalSize').textContent = Utils.fmtSize(data.totalSize);
                     document.getElementById('confFileList').innerHTML = data.files.map(f => `<li>${f.name} (${Utils.fmtSize(f.size)})</li>`).join('');
 
                     this.transferFiles = data.files;
                     UI.showModal('confirmModal');
                 } else if (data.type === 'accept-proposal' && this.role === 'sender') {
-                    // Receiver accepted, compress and send payload!
-                    this.startSendingPayload();
+                    this.startSendingP2PPayload();
                 } else if (data.type === 'decline-proposal' && this.role === 'sender') {
                     UI.showToast('Receiver declined the transfer request', 'error');
                     Transfer.cancel();
@@ -1081,23 +1145,28 @@
                     this.renderTransferUI('RECEIVING FILES');
                 } else if (data.type === 'chunk' && this.role === 'receiver') {
                     this.handleIncomingChunk(data);
-                } else if (data.type === 'file-complete' && this.role === 'receiver') {
-                    this.finalizeReceivedFile(data.index);
                 } else if (data.type === 'all-complete' && this.role === 'receiver') {
                     this.completeTransfer();
                 }
             });
-
-            this.conn.on('close', () => {
-                UI.showToast('P2P Connection closed', 'info');
-            });
         },
 
-        acceptTransfer() {
+        async acceptTransfer() {
             UI.closeModal('confirmModal');
-            this.conn.send({ type: 'accept-proposal' });
-            UI.switchScreen('scr-transfer');
-            this.renderTransferUI('RECEIVING FILES');
+            if (this.mode === '1month' && this.activePersistentRecord) {
+                // Execute download for persistent store
+                this.transferFiles = this.activePersistentRecord.files;
+                this.receivedFiles = this.activePersistentRecord.files.map(f => ({ finalBlob: f.blob }));
+
+                // Single use enforcement: mark completed and remove payload from IndexedDB
+                await DB.deleteTransfer(this.code);
+
+                this.completeTransfer();
+            } else {
+                this.conn.send({ type: 'accept-proposal' });
+                UI.switchScreen('scr-transfer');
+                this.renderTransferUI('RECEIVING FILES');
+            }
         },
 
         declineTransfer() {
@@ -1106,28 +1175,19 @@
             Transfer.cancel();
         },
 
-        async startSendingPayload() {
+        async startSendingP2PPayload() {
             UI.switchScreen('scr-transfer');
             this.renderTransferUI('SENDING FILES');
 
-            UI.showToast('Compressing and preparing files...', 'info');
-
-            // Compress files
             const preparedFiles = [];
             let totalSendSize = 0;
 
             for (let i = 0; i < UI.selectedFiles.length; i++) {
-                const prep = await SmartCompressor.compressFile(UI.selectedFiles[i]);
-                preparedFiles.push({
-                    index: i,
-                    name: UI.selectedFiles[i].name,
-                    origSize: prep.origSize,
-                    sendSize: prep.sendSize,
-                    compressed: prep.compressed,
-                    sha256: prep.sha256,
-                    data: prep.data
-                });
-                totalSendSize += prep.sendSize;
+                const f = UI.selectedFiles[i];
+                const buf = await f.arrayBuffer();
+                const hash = await Utils.computeSHA256(buf);
+                preparedFiles.push({ index: i, name: f.name, origSize: f.size, sendSize: f.size, sha256: hash, data: new Uint8Array(buf) });
+                totalSendSize += f.size;
             }
 
             this.transferFiles = preparedFiles;
@@ -1136,14 +1196,12 @@
             this.stats.lastTime = Date.now();
             this.stats.transferredBytes = 0;
 
-            // Meta payload
             this.conn.send({
                 type: 'start-transfer-meta',
                 totalSendSize: totalSendSize,
-                files: preparedFiles.map(f => ({ index: f.index, name: f.name, origSize: f.origSize, sendSize: f.sendSize, compressed: f.compressed, sha256: f.sha256 }))
+                files: preparedFiles.map(f => ({ index: f.index, name: f.name, origSize: f.origSize, sendSize: f.sendSize, sha256: f.sha256 }))
             });
 
-            // Stream Chunks with Backpressure
             for (let i = 0; i < preparedFiles.length; i++) {
                 const file = preparedFiles[i];
                 const totalChunks = Math.ceil(file.sendSize / Utils.CHUNK_SIZE);
@@ -1151,7 +1209,6 @@
                 for (let c = 0; c < totalChunks; c++) {
                     if (!this.conn || !this.conn.open) return;
 
-                    // WebRTC DataChannel backpressure management
                     while (this.conn.dataChannel && this.conn.dataChannel.bufferedAmount > 65536) {
                         await new Promise(r => setTimeout(r, 10));
                     }
@@ -1160,25 +1217,18 @@
                     const end = Math.min(start + Utils.CHUNK_SIZE, file.sendSize);
                     const chunkData = file.data.subarray(start, end);
 
-                    this.conn.send({
-                        type: 'chunk',
-                        fileIndex: i,
-                        chunkIndex: c,
-                        data: chunkData
-                    });
+                    this.conn.send({ type: 'chunk', fileIndex: i, chunkIndex: c, data: chunkData });
 
                     this.stats.transferredBytes += chunkData.byteLength;
                     this.updateProgressUI(i, end, file.sendSize);
                 }
-
-                this.conn.send({ type: 'file-complete', index: i });
             }
 
             this.conn.send({ type: 'all-complete' });
             this.completeTransfer();
         },
 
-        async handleIncomingChunk(d) {
+        handleIncomingChunk(d) {
             const fileMeta = this.transferFiles[d.fileIndex];
             const target = this.receivedFiles[d.fileIndex];
 
@@ -1189,36 +1239,9 @@
             this.updateProgressUI(d.fileIndex, target.doneBytes, fileMeta.sendSize);
         },
 
-        async finalizeReceivedFile(index) {
-            const meta = this.transferFiles[index];
-            const target = this.receivedFiles[index];
-
-            // Reconstruct array buffer
-            const blob = new Blob(target.chunks);
-            const arrayBuffer = await blob.arrayBuffer();
-
-            // SHA-256 verification
-            const hash = await Utils.computeSHA256(arrayBuffer);
-            const verified = (hash === meta.sha256);
-
-            let finalBuffer = arrayBuffer;
-            if (meta.compressed) {
-                finalBuffer = await SmartCompressor.decompress(new Uint8Array(arrayBuffer));
-            }
-
-            target.finalBlob = new Blob([finalBuffer]);
-            target.verified = verified;
-
-            const badge = document.getElementById(`hashBadge-${index}`);
-            if (badge) {
-                badge.innerHTML = verified ? '<span class="text-emerald-400"><i class="fas fa-circle-check"></i> SHA-256 Verified</span>' : '<span class="text-red-400"><i class="fas fa-triangle-exclamation"></i> Hash Mismatch</span>';
-            }
-        },
-
         renderTransferUI(title) {
             document.getElementById('transferRoleBadge').textContent = title;
             const container = document.getElementById('transferFileList');
-
             container.innerHTML = this.transferFiles.map((f, i) => `
                 <div class="p-3 rounded-xl bg-black/40 border border-gray-800 space-y-2 text-xs">
                     <div class="flex justify-between items-center">
@@ -1227,10 +1250,6 @@
                     </div>
                     <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
                         <div id="fileBar-${i}" class="h-full bg-brand-500 w-0 transition-all duration-150"></div>
-                    </div>
-                    <div class="flex justify-between text-[11px] text-gray-500">
-                        <span>${Utils.fmtSize(f.origSize)} ${f.compressed ? '(compressed)' : ''}</span>
-                        <span id="hashBadge-${i}">Hashing...</span>
                     </div>
                 </div>
             `).join('');
@@ -1243,24 +1262,19 @@
             if (bar) bar.style.width = `${pct}%`;
             if (text) text.textContent = `${pct}%`;
 
-            // Overall
             const overallPct = Math.min(100, Math.round((this.stats.transferredBytes / this.stats.totalBytes) * 100));
             document.getElementById('overallPercent').textContent = `${overallPct}%`;
             document.getElementById('overallProgressBar').style.width = `${overallPct}%`;
             document.getElementById('transferredBytesText').textContent = `${Utils.fmtSize(this.stats.transferredBytes)} / ${Utils.fmtSize(this.stats.totalBytes)}`;
 
-            // Speed & ETA
             const now = Date.now();
             const timeDiff = (now - this.stats.lastTime) / 1000;
             if (timeDiff >= 0.5) {
                 const bytesDiff = this.stats.transferredBytes - this.stats.lastBytes;
                 const speed = bytesDiff / timeDiff;
                 document.getElementById('transferSpeed').textContent = Utils.fmtSpeed(speed);
-
                 const remainingBytes = this.stats.totalBytes - this.stats.transferredBytes;
-                const eta = speed > 0 ? remainingBytes / speed : 0;
-                document.getElementById('transferETA').textContent = Utils.fmtTime(eta);
-
+                document.getElementById('transferETA').textContent = Utils.fmtTime(speed > 0 ? remainingBytes / speed : 0);
                 this.stats.lastBytes = this.stats.transferredBytes;
                 this.stats.lastTime = now;
             }
@@ -1270,8 +1284,7 @@
             SoundFX.playSuccess();
             UI.switchScreen('scr-complete');
 
-            const totalTime = ((Date.now() - this.stats.startTime) / 1000).toFixed(1);
-            document.getElementById('completeSummaryText').textContent = `Transferred ${this.transferFiles.length} file(s) (${Utils.fmtSize(this.stats.totalBytes)}) in ${totalTime}s`;
+            document.getElementById('completeSummaryText').textContent = `Transferred ${this.transferFiles.length} file(s)`;
 
             if (this.role === 'receiver') {
                 document.getElementById('recvCompletedListWrap').classList.remove('hidden');
@@ -1285,19 +1298,24 @@
                     </div>
                 `).join('');
 
-                if (document.getElementById('settingAutoDL').checked) {
-                    this.transferFiles.forEach((_, idx) => this.downloadSingle(idx));
-                }
+                // Auto download files
+                this.transferFiles.forEach((_, idx) => this.downloadSingle(idx));
             }
         },
 
         downloadSingle(index) {
             const meta = this.transferFiles[index];
-            const item = this.receivedFiles[index];
-            if (!item || !item.finalBlob) return;
+            let blob = null;
 
+            if (this.mode === '1month' && this.receivedFiles[index]) {
+                blob = this.receivedFiles[index].finalBlob;
+            } else if (this.receivedFiles[index] && this.receivedFiles[index].chunks) {
+                blob = new Blob(this.receivedFiles[index].chunks);
+            }
+
+            if (!blob) return;
             const a = document.createElement('a');
-            a.href = URL.createObjectURL(item.finalBlob);
+            a.href = URL.createObjectURL(blob);
             a.download = meta.name;
             a.click();
             setTimeout(() => URL.revokeObjectURL(a.href), 10000);
@@ -1307,9 +1325,10 @@
             if (typeof JSZip === 'undefined') return;
             const zip = new JSZip();
             this.transferFiles.forEach((f, i) => {
-                if (this.receivedFiles[i] && this.receivedFiles[i].finalBlob) {
-                    zip.file(f.name, this.receivedFiles[i].finalBlob);
-                }
+                let blob = null;
+                if (this.mode === '1month' && this.receivedFiles[i]) blob = this.receivedFiles[i].finalBlob;
+                else if (this.receivedFiles[i] && this.receivedFiles[i].chunks) blob = new Blob(this.receivedFiles[i].chunks);
+                if (blob) zip.file(f.name, blob);
             });
             const content = await zip.generateAsync({ type: "blob" });
             const a = document.createElement('a');
@@ -1317,14 +1336,19 @@
             a.download = `DropLink-${this.code}.zip`;
             a.click();
             setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+        },
+
+        async deletePersistentTransfer(code) {
+            await DB.deleteTransfer(code);
+            UI.showToast(`Transfer ${code} deleted`, 'info');
+            UI.showMyTransfersModal();
         }
     };
 
-    // --- INITIALIZATION & BINDINGS ---
+    // --- INITIALIZATION ---
     document.addEventListener('DOMContentLoaded', () => {
         Theme.init();
 
-        // Drag and drop event listeners
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
         const folderInput = document.getElementById('folderInput');
@@ -1355,13 +1379,12 @@
             }
         });
 
-        // Uppercase code input locking
         const codeInput = document.getElementById('codeInput');
         codeInput.addEventListener('input', () => {
             codeInput.value = codeInput.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6);
         });
 
-        // Canvas particle system background
+        // Background particles
         const canvas = document.getElementById('bgCanvas');
         const ctx = canvas.getContext('2d');
         let pts = [];
@@ -1386,9 +1409,7 @@
                 p.x += p.vx; p.y += p.vy;
                 if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
                 if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2); ctx.fill();
             });
             requestAnimationFrame(drawBackground);
         }
