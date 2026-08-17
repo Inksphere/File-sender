@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DropLink — Fast, Secure File Transfer</title>
-    <meta name="description" content="Send files via 10-Minute Quick P2P or 1-Month Own Time Link.">
+    <meta name="description" content="Send files via 10-Minute Quick P2P or 30-Day Own Time Link.">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23f59e0b'/%3E%3Cpath d='M16 8v12m0 0l-4-4m4 4l4-4M10 22h12' stroke='%2308090e' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
     
+    <!-- External Dependencies -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -98,7 +99,7 @@
                             SEND FILES.<br><span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-amber-600">DIRECTLY. PRIVATELY.</span>
                         </h1>
                         <p class="text-base text-gray-400 font-light max-w-xl mx-auto">
-                            Stream files directly online or upload for download anytime. Download native app for zero-internet offline transfers.
+                            Stream files directly online or upload for download anytime within 30 days.
                         </p>
                     </div>
 
@@ -155,7 +156,7 @@
                                         <span class="text-[11px] font-mono font-extrabold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">OWN TIME SHARE</span>
                                     </div>
                                     <div>
-                                        <h2 class="text-xl font-bold mb-1">📅 OWN TIME (1 MONTH)</h2>
+                                        <h2 class="text-xl font-bold mb-1">📅 OWN TIME (30 DAYS)</h2>
                                         <p class="text-xs text-gray-400 leading-relaxed">Upload once. Receiver downloads later within 30 days. Sender can close browser and go offline.</p>
                                     </div>
                                 </div>
@@ -187,7 +188,7 @@
                     <div class="w-full glass-panel p-8 rounded-3xl space-y-6">
                         <h2 class="text-2xl font-bold text-center">Select files to transfer</h2>
 
-                        <!-- DRAG & DROP & CLICK DROPZONE -->
+                        <!-- DROPZONE -->
                         <div id="dropZone" class="border-2 border-dashed border-gray-700 hover:border-brand-500 rounded-2xl p-8 text-center cursor-pointer transition-all bg-black/20 hover:bg-brand-500/5 group relative">
                             <input type="file" id="fileInput" multiple class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10">
                             <div class="w-16 h-16 rounded-full bg-brand-500/10 text-brand-500 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform pointer-events-none">
@@ -257,6 +258,7 @@
                             </div>
                         </div>
 
+                        <!-- OFFLINE NOTICE FOR 1-MONTH LINK -->
                         <div id="offlineNotice" class="hidden p-4 rounded-2xl bg-brand-500/10 border border-brand-500/30 text-left text-xs space-y-1">
                             <span class="font-bold text-brand-500 flex items-center gap-1.5"><i class="fas fa-circle-check"></i> You can close DropLink now</span>
                             <p class="text-gray-300">Your file is stored securely until downloaded or expires on <strong id="monthExpiryDate" class="text-white">--</strong>. Receiver can download even if you are offline.</p>
@@ -356,7 +358,7 @@
                     </div>
                 </div>
 
-                <!-- SECTION 6: LIVE TRANSFER DASHBOARD -->
+                <!-- SECTION 6: LIVE TRANSFER PROCESS DASHBOARD -->
                 <section id="scr-transfer" class="view-screen hidden flex-col items-center space-y-6 w-full max-w-2xl mx-auto">
                     <div class="glass-panel p-8 rounded-3xl space-y-8 w-full">
 
@@ -396,7 +398,7 @@
                     </div>
                 </section>
 
-                <!-- SECTION 7: COMPLETION SUMMARY -->
+                <!-- SECTION 7: COMPLETION SUMMARY & DOWNLOAD -->
                 <section id="scr-complete" class="view-screen hidden flex-col items-center space-y-6 w-full max-w-lg mx-auto text-center">
                     <div class="glass-panel p-8 rounded-3xl space-y-6 w-full">
                         <div class="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto text-3xl">
@@ -405,12 +407,17 @@
 
                         <div>
                             <h2 class="text-3xl font-black">Transfer Complete!</h2>
-                            <p id="completeSummaryText" class="text-sm text-gray-400 mt-1">Transferred 1 file(s)</p>
+                            <p id="completeSummaryText" class="text-sm text-gray-400 mt-1">Files ready for download</p>
                         </div>
 
-                        <div id="recvCompletedListWrap" class="hidden space-y-3 text-left">
+                        <!-- DOWNLOAD FILE LIST -->
+                        <div id="recvCompletedListWrap" class="space-y-3 text-left">
                             <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Received Files</h3>
-                            <div id="recvCompletedList" class="max-h-48 overflow-y-auto space-y-2"></div>
+                            <div id="recvCompletedList" class="max-h-56 overflow-y-auto space-y-2"></div>
+
+                            <button id="btnDownloadAllZip" onclick="Transfer.downloadAllZip()" class="w-full py-3.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-darkbg font-extrabold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20">
+                                <i class="fas fa-file-zipper"></i> Download All as ZIP
+                            </button>
                         </div>
 
                         <button onclick="UI.goHome()" class="w-full py-3 rounded-xl glass-panel hover:bg-gray-800 text-sm font-semibold">
@@ -499,7 +506,7 @@
 
     <script>
     /**
-     * DropLink Engine: Fixed Event Listeners, Mode Selection & Complete Code Structure
+     * DropLink Engine: Fixed File Downloading & Live Process Tracking
      */
 
     const Utils = {
@@ -522,13 +529,35 @@
 
         fmtSpeed(bytesPerSec) {
             return this.fmtSize(bytesPerSec) + '/s';
+        },
+
+        fmtTime(seconds) {
+            if (!isFinite(seconds) || seconds < 0) return '--';
+            if (seconds < 60) return Math.ceil(seconds) + 's';
+            const m = Math.floor(seconds / 60);
+            const s = Math.ceil(seconds % 60);
+            return `${m}m ${s}s`;
+        },
+
+        downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 5000);
         }
     };
 
-    // GENERATE AUTO-DOWNLOAD CODES FOR PLATFORMS
+    // NATIVE PLATFORM CODE GENERATOR
     const AppCodeGenerator = {
         downloadFor(platform) {
-            UI.showToast(`Generating DropLink Native package for ${platform.toUpperCase()}...`, 'success');
+            UI.showToast(`Generating Native package for ${platform.toUpperCase()}...`, 'success');
             let filename = '';
             let content = '';
 
@@ -550,15 +579,11 @@
             }
 
             const blob = new Blob([content], { type: 'text/plain' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = filename;
-            a.click();
-            setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+            Utils.downloadBlob(blob, filename);
         }
     };
 
-    // INDEXEDDB DATABASE FOR OWN TIME / 1-MONTH TRANSFERS
+    // INDEXEDDB PERSISTENT STORE FOR 30-DAY OWN TIME LINK
     const DB = {
         dbName: 'DropLinkDB', version: 1,
         open() {
@@ -755,17 +780,21 @@
         closeModal(id) { document.getElementById(id).classList.add('hidden'); }
     };
 
-    // WEBRTC & INDEXEDDB TRANSFER ENGINE
+    // TRANSFER ENGINE WITH LIVE PROCESS & DOWNLOAD VERIFICATION
     const Transfer = {
         peer: null, conn: null, role: null, mode: '10min', code: '',
         stats: { totalBytes: 0, transferredBytes: 0, startTime: 0, lastBytes: 0, lastTime: 0 },
         pingIv: null, activeRecord: null,
+        receivedChunks: [], receivedBlobs: [], transferFiles: [],
 
         cleanup() {
             if (this.pingIv) clearInterval(this.pingIv);
             if (this.conn) { try { this.conn.close(); } catch(e){} this.conn = null; }
             if (this.peer) { try { this.peer.destroy(); } catch(e){} this.peer = null; }
             this.activeRecord = null;
+            this.receivedChunks = [];
+            this.receivedBlobs = [];
+            this.transferFiles = [];
         },
 
         cancel() { this.cleanup(); UI.goHome(); },
@@ -790,8 +819,8 @@
                 this.peer = new Peer(`dl-${this.code}`, { debug: 0 });
                 this.peer.on('connection', (c) => { this.conn = c; this.setupSenderConnection(); });
             } else {
-                // OWN TIME / 1-MONTH STORE
-                document.getElementById('codeHeaderBadge').textContent = 'OWN TIME LINK';
+                // 30-DAY OWN TIME STORE
+                document.getElementById('codeHeaderBadge').textContent = 'OWN TIME LINK (30 DAYS)';
                 document.getElementById('codeExpiryText').classList.add('hidden');
                 document.getElementById('offlineNotice').classList.remove('hidden');
 
@@ -802,7 +831,7 @@
                 let totalSize = 0;
                 for (const f of UI.selectedFiles) {
                     const buf = await f.arrayBuffer();
-                    fileRecords.push({ name: f.name, size: f.size, type: f.type, blob: new Blob([buf]) });
+                    fileRecords.push({ name: f.name, size: f.size, type: f.type, data: buf });
                     totalSize += f.size;
                 }
 
@@ -817,7 +846,7 @@
         setupSenderConnection() {
             this.pingIv = setInterval(() => { if (this.conn && this.conn.open) this.conn.send({ type: 'ping' }); }, 4000);
             this.conn.on('open', () => {
-                const filesMeta = UI.selectedFiles.map(f => ({ name: f.name, size: f.size }));
+                const filesMeta = UI.selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type }));
                 this.conn.send({ type: 'meta', files: filesMeta, totalSize: UI.selectedFiles.reduce((a,b)=>a+b.size,0) });
                 this.startStreamingFiles();
             });
@@ -825,8 +854,14 @@
 
         async startStreamingFiles() {
             UI.switchScreen('scr-transfer');
+            document.getElementById('transferRoleBadge').textContent = 'SENDING FILES';
+            document.getElementById('transferStatusTitle').textContent = 'Streaming to Receiver...';
             this.stats.totalBytes = UI.selectedFiles.reduce((a,b)=>a+b.size,0);
             this.stats.startTime = Date.now();
+            this.stats.lastTime = Date.now();
+            this.stats.transferredBytes = 0;
+
+            this.renderFileListProgress(UI.selectedFiles);
 
             for (let i = 0; i < UI.selectedFiles.length; i++) {
                 const file = UI.selectedFiles[i];
@@ -847,8 +882,8 @@
                     this.conn.send({ type: 'chunk', fileIndex: i, chunkIndex: c, data: chunkBuffer });
                     this.stats.transferredBytes += chunkBuffer.byteLength;
                     
-                    if (c % 32 === 0) {
-                        this.updateUI();
+                    if (c % 16 === 0 || c === totalChunks - 1) {
+                        this.updateProgressUI(i, end, file.size);
                         await new Promise(r => setTimeout(r, 0));
                     }
                 }
@@ -856,6 +891,8 @@
 
             this.conn.send({ type: 'all-complete' });
             UI.switchScreen('scr-complete');
+            document.getElementById('recvCompletedListWrap').classList.add('hidden');
+            document.getElementById('completeSummaryText').textContent = `Successfully sent ${UI.selectedFiles.length} file(s).`;
         },
 
         async connectAsReceiver() {
@@ -877,7 +914,6 @@
                 this.activeRecord = localRecord;
                 this.mode = '1month';
 
-                // Display Confirmation Screen
                 document.getElementById('confSenderDeviceRow').classList.add('hidden');
                 document.getElementById('confExpiryRow').classList.remove('hidden');
                 document.getElementById('confModeText').textContent = 'OWN TIME LINK (30 DAYS)';
@@ -894,15 +930,31 @@
             this.peer = new Peer(undefined, { debug: 0 });
             this.peer.on('open', () => {
                 this.conn = this.peer.connect(`dl-${code}`, { reliable: true });
-                this.conn.on('open', () => { UI.switchScreen('scr-transfer'); });
+                this.conn.on('open', () => {
+                    UI.switchScreen('scr-transfer');
+                    document.getElementById('transferRoleBadge').textContent = 'RECEIVING FILES';
+                    document.getElementById('transferStatusTitle').textContent = 'Receiving from Sender...';
+                });
+                
                 this.conn.on('data', (d) => {
                     if (d.type === 'meta') {
+                        this.transferFiles = d.files;
+                        this.receivedChunks = d.files.map(() => []);
                         this.stats.totalBytes = d.totalSize;
+                        this.stats.startTime = Date.now();
+                        this.stats.lastTime = Date.now();
+                        this.stats.transferredBytes = 0;
+                        this.renderFileListProgress(d.files);
                     } else if (d.type === 'chunk') {
+                        if (!this.receivedChunks[d.fileIndex]) this.receivedChunks[d.fileIndex] = [];
+                        this.receivedChunks[d.fileIndex][d.chunkIndex] = d.data;
                         this.stats.transferredBytes += d.data.byteLength;
-                        this.updateUI();
+                        
+                        const fileDone = this.receivedChunks[d.fileIndex].reduce((acc, cur) => acc + (cur ? cur.byteLength : 0), 0);
+                        this.updateProgressUI(d.fileIndex, fileDone, this.transferFiles[d.fileIndex].size);
                     } else if (d.type === 'all-complete') {
-                        UI.switchScreen('scr-complete');
+                        this.receivedBlobs = this.transferFiles.map((f, i) => new Blob(this.receivedChunks[i], { type: f.type || 'application/octet-stream' }));
+                        this.showCompletionScreen();
                     }
                 });
             });
@@ -913,25 +965,105 @@
         async acceptTransfer() {
             UI.closeModal('confirmModal');
             if (this.mode === '1month' && this.activeRecord) {
-                // Trigger download for files
-                for (const f of this.activeRecord.files) {
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(f.blob);
-                    a.download = f.name;
-                    a.click();
+                UI.switchScreen('scr-transfer');
+                document.getElementById('transferRoleBadge').textContent = 'RETRIEVING FILES';
+                document.getElementById('transferStatusTitle').textContent = 'Loading stored files...';
+                
+                this.transferFiles = this.activeRecord.files;
+                this.stats.totalBytes = this.activeRecord.totalSize;
+                this.stats.transferredBytes = 0;
+                this.stats.startTime = Date.now();
+                this.stats.lastTime = Date.now();
+                this.renderFileListProgress(this.transferFiles);
+
+                // Simulate smooth process loading from storage
+                this.receivedBlobs = [];
+                for (let i = 0; i < this.activeRecord.files.length; i++) {
+                    const f = this.activeRecord.files[i];
+                    this.receivedBlobs.push(new Blob([f.data], { type: f.type || 'application/octet-stream' }));
+                    this.stats.transferredBytes += f.size;
+                    this.updateProgressUI(i, f.size, f.size);
+                    await new Promise(r => setTimeout(r, 100));
                 }
+
                 await DB.deleteTransfer(this.code);
-                UI.switchScreen('scr-complete');
+                this.showCompletionScreen();
             }
         },
 
         declineTransfer() { UI.closeModal('confirmModal'); this.cleanup(); },
 
-        updateUI() {
-            const pct = Math.min(100, Math.round((this.stats.transferredBytes / this.stats.totalBytes) * 100));
-            document.getElementById('overallPercent').textContent = `${pct}%`;
-            document.getElementById('overallProgressBar').style.width = `${pct}%`;
+        renderFileListProgress(files) {
+            const container = document.getElementById('transferFileList');
+            container.innerHTML = files.map((f, i) => `
+                <div class="p-3 rounded-xl bg-black/40 border border-gray-800 space-y-2 text-xs">
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium truncate max-w-xs flex items-center gap-2">${f.name}</span>
+                        <span id="filePct-${i}" class="font-mono text-brand-500 font-bold">0%</span>
+                    </div>
+                    <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                        <div id="fileBar-${i}" class="h-full bg-brand-500 w-0 transition-all duration-150"></div>
+                    </div>
+                </div>
+            `).join('');
+        },
+
+        updateProgressUI(fileIndex, fileDone, fileTotal) {
+            const pct = Math.min(100, Math.round((fileDone / fileTotal) * 100));
+            const bar = document.getElementById(`fileBar-${fileIndex}`);
+            const text = document.getElementById(`filePct-${fileIndex}`);
+            if (bar) bar.style.width = `${pct}%`;
+            if (text) text.textContent = `${pct}%`;
+
+            const overallPct = Math.min(100, Math.round((this.stats.transferredBytes / this.stats.totalBytes) * 100));
+            document.getElementById('overallPercent').textContent = `${overallPct}%`;
+            document.getElementById('overallProgressBar').style.width = `${overallPct}%`;
             document.getElementById('transferredBytesText').textContent = `${Utils.fmtSize(this.stats.transferredBytes)} / ${Utils.fmtSize(this.stats.totalBytes)}`;
+
+            const now = Date.now();
+            const timeDiff = (now - this.stats.lastTime) / 1000;
+            if (timeDiff >= 0.5) {
+                const bytesDiff = this.stats.transferredBytes - this.stats.lastBytes;
+                const speed = bytesDiff / timeDiff;
+                document.getElementById('transferSpeed').textContent = Utils.fmtSpeed(speed);
+                const remainingBytes = this.stats.totalBytes - this.stats.transferredBytes;
+                document.getElementById('transferETA').textContent = Utils.fmtTime(speed > 0 ? remainingBytes / speed : 0);
+                this.stats.lastBytes = this.stats.transferredBytes;
+                this.stats.lastTime = now;
+            }
+        },
+
+        showCompletionScreen() {
+            UI.switchScreen('scr-complete');
+            document.getElementById('recvCompletedListWrap').classList.remove('hidden');
+            document.getElementById('completeSummaryText').textContent = `Received ${this.transferFiles.length} file(s) successfully.`;
+
+            const list = document.getElementById('recvCompletedList');
+            list.innerHTML = this.transferFiles.map((f, i) => `
+                <div class="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-gray-800 text-xs">
+                    <span class="truncate font-mono pr-2">${f.name} (${Utils.fmtSize(f.size)})</span>
+                    <button onclick="Transfer.downloadSingleFile(${i})" class="px-3.5 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-400 text-darkbg font-bold flex items-center gap-1.5 flex-shrink-0">
+                        <i class="fas fa-download"></i> Save
+                    </button>
+                </div>
+            `).join('');
+        },
+
+        downloadSingleFile(index) {
+            const f = this.transferFiles[index];
+            const blob = this.receivedBlobs[index];
+            if (!blob) return;
+            Utils.downloadBlob(blob, f.name);
+        },
+
+        async downloadAllZip() {
+            if (typeof JSZip === 'undefined' || !this.receivedBlobs.length) return;
+            const zip = new JSZip();
+            this.transferFiles.forEach((f, i) => {
+                if (this.receivedBlobs[i]) zip.file(f.name, this.receivedBlobs[i]);
+            });
+            const content = await zip.generateAsync({ type: "blob" });
+            Utils.downloadBlob(content, `DropLink-${this.code}.zip`);
         },
 
         async deletePersistentTransfer(code) {
